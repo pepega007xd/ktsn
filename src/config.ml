@@ -48,6 +48,18 @@ module Backend_solver = Self.Enum (struct
     | `Auto -> "Auto"
 end)
 
+(** TODO: better names *)
+module Astral_mode = Self.Enum (struct
+  let option_name = "-sl-astral-mode"
+  let help = ""
+  let arg_name = "old | new"
+
+  type t = [ `Old | `New ]
+  let default = `Old
+  let all_values = [ `Old; `New ]
+  let to_string = function `Old -> "old" | `New -> "new"
+end)
+
 module Astral_encoding = Self.Enum (struct
   let option_name = "-sl-astral-encoding"
   let help = "Which location encoding should Astral use, default: Bitvectors"

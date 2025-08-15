@@ -4,6 +4,17 @@ open Common
 (** This module implements wrapper functions for Astral's sat and entailment
     queries, with the caching of query results *)
 
+(** Reference to a backend solver module *)
+let convertor = ref (module Astral_v1 : Astral_convertor_sig.CONVERTOR)
+
+let convert (formula : Formula.t) : Astral.SL.t = 
+  let module Convertor = (val !convertor) in
+  Convertor.convert formula
+
+let convert_state (state : Formula.state) : Astral.SL.t = 
+  let module Convertor = (val !convertor) in
+  state |> List.map Convertor.convert |> SL.mk_or
+
 (** time spent in Astral *)
 let solver_time = ref 0.0
 
@@ -16,10 +27,16 @@ let init () =
   in
   let backend = Config.Backend_solver.get () in
   let encoding = Config.Astral_encoding.get () in
-  solver := Solver.init ~dump_queries ~backend ~encoding ()
+  let () = convertor := match Config.Astral_mode.get () with 
+    | `Old -> (module Astral_v1) 
+    | `New -> (module Astral_v2)
+  in
+  let module C = (val !convertor) in
+  Common.solver := C.init ~dump_queries ~backend ~encoding ()
+
 
 let check_sat (formula : Formula.t) : bool =
-  let astral_formula = Formula.to_astral formula in
+  let astral_formula = convert formula in
   let cache_input = Formula.canonicalize formula in
 
   let cached, result =
@@ -50,7 +67,7 @@ let check_entailment (lhs : Formula.state) (rhs : Formula.state) : bool =
   in
 
   let astral_lhs, astral_rhs =
-    (Formula.state_to_astral lhs, Formula.state_to_astral rhs)
+    (convert_state lhs, convert_state rhs)
   in
   let fresh_vars = SL.get_vars astral_rhs |> List.filter is_fresh_var in
   let astral_rhs = SL.mk_exists fresh_vars astral_rhs in

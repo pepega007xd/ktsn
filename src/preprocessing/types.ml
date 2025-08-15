@@ -149,4 +149,4 @@ let process_types (file : file) =
   let heap_sort =
     Hashtbl.to_seq_values type_info |> List.of_seq |> HeapSort.of_list
   in
-  Common.solver := Solver.set_heap_sort heap_sort !Common.solver
+  Common.solver := Solver.add_heap_sort heap_sort !Common.solver

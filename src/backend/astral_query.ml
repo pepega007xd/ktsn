@@ -15,6 +15,8 @@ let convert_state (state : Formula.state) : Astral.SL.t =
   let module Convertor = (val !convertor) in
   state |> List.map Convertor.convert |> SL.mk_or
 
+let cnt = ref 0
+
 (** time spent in Astral *)
 let solver_time = ref 0.0
 
@@ -45,6 +47,8 @@ let check_sat (formula : Formula.t) : bool =
     | None ->
         let start = Unix.gettimeofday () in
         let result = Solver.check_sat !solver astral_formula in
+        cnt := !cnt + 1;
+        Config.Self.debug ~level:2  "Query (sat) %d: %f -> %b \n" !cnt (Unix.gettimeofday () -. start) result;
         solver_time := !solver_time +. Unix.gettimeofday () -. start;
 
         Hashtbl.add !sat_cache cache_input result;
@@ -78,6 +82,8 @@ let check_entailment (lhs : Formula.state) (rhs : Formula.state) : bool =
     | None ->
         let start = Unix.gettimeofday () in
         let result = Solver.check_entl !solver astral_lhs astral_rhs in
+        cnt := !cnt + 1;
+        Config.Self.debug ~level:2 "Query (entl) %d: %f -> %b \n" !cnt (Unix.gettimeofday () -. start) result;
         solver_time := !solver_time +. Unix.gettimeofday () -. start;
 
         Hashtbl.add !entl_cache cache_input result;

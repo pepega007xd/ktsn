@@ -17,7 +17,7 @@ let init ~backend ~encoding ~dump_queries () =
     (loc_nls, NLS.struct_nls);
   ] 
   in
-  Solver.init ~dump_queries ~backend ~encoding ~quantifier_encoding:`Direct ~use_builtin_defs:false ()
+  Solver.init ~dump_queries ~backend ~encoding ~quantifier_encoding:`Direct ~use_builtin_defs:false ~source:Config.name ()
   |> Solver.add_heap_sort heap_sort
 
 let [@warning "-8"] convert f =

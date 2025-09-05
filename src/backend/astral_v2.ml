@@ -5,9 +5,9 @@ open Formula
 
 (** TODO: do not used SID directly *)
 let init ~backend ~encoding ~dump_queries () =
-  SID.register_user_defined ls;
-  SID.register_user_defined dls;
-  SID.register_user_defined nls;
+  GlobalSID.register_user_defined ls;
+  GlobalSID.register_user_defined dls;
+  GlobalSID.register_user_defined nls;
   Freed.register ();
 
   let open SL_builtins in

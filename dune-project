@@ -8,9 +8,7 @@
   (synopsis "Frama-C plugin for shape analysis using separation logic")
   (depends
     (frama-c (>= 30.0))
-    ppx_inline_test
-    (qcheck :with-test)
-    (alcotest :with-test)
+    (ppx_inline_test :build)
   )
 )
 (generate_opam_files)

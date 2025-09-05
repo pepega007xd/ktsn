@@ -4,10 +4,9 @@ synopsis: "Frama-C plugin for shape analysis using separation logic"
 maintainer: ["Tomas Brablec"]
 depends: [
   "dune" {>= "3.2"}
+  "astral"
   "frama-c" {>= "30.0"}
-  "ppx_inline_test"
-  "qcheck" {with-test}
-  "alcotest" {with-test}
+  "ppx_inline_test" {build}
   "odoc" {with-doc}
 ]
 build: [

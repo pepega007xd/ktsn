@@ -73,8 +73,10 @@ let check_entailment (lhs : Formula.state) (rhs : Formula.state) : bool =
   let astral_lhs, astral_rhs =
     (convert_state lhs, convert_state rhs)
   in
-  let fresh_vars = SL.get_vars astral_rhs |> List.filter is_fresh_var in
-  let astral_rhs = SL.mk_exists fresh_vars astral_rhs in
+  let fresh_vars_lhs = SL.get_vars astral_lhs |> List.filter is_fresh_var in
+  let fresh_vars_rhs = SL.get_vars astral_rhs |> List.filter is_fresh_var in
+  let existential_vars = SL.Variable.Set.(elements @@ diff (of_list fresh_vars_rhs) (of_list fresh_vars_lhs)) in
+  let astral_rhs = SL.mk_exists existential_vars astral_rhs in
 
   let cached, result =
     match Hashtbl.find_opt !entl_cache cache_input with

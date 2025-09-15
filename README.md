@@ -11,7 +11,7 @@ This installation guide was tested on Fedora 41 and Ubuntu 24.04, but it should 
 - Install the necessary dependencies:
 
   ```bash
-  opam install frama-c ppx_inline_test qcheck alcotest
+  opam install . --deps-only
   ```
 
 - Install the Astral solver outside of this repository:

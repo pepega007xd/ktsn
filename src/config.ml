@@ -1,5 +1,7 @@
 (** This module contains the definitions of the command-line parameters *)
 
+let name = "ktsn"
+
 module Self = Plugin.Register (struct
   let name = "Shape analysis"
   let shortname = "sl"
@@ -46,6 +48,18 @@ module Backend_solver = Self.Enum (struct
     | `CVC5 -> "CVC5"
     | `Z3 -> "Z3"
     | `Auto -> "Auto"
+end)
+
+(** TODO: better names *)
+module Astral_mode = Self.Enum (struct
+  let option_name = "-sl-astral-mode"
+  let help = ""
+  let arg_name = "old | new"
+
+  type t = [ `Old | `New ]
+  let default = `Old
+  let all_values = [ `Old; `New ]
+  let to_string = function `Old -> "old" | `New -> "new"
 end)
 
 module Astral_encoding = Self.Enum (struct

@@ -36,42 +36,34 @@ end)
 module Backend_solver = Self.Enum (struct
   let option_name = "-sl-backend-solver"
   let help = "Which solver should be used by Astral, default: Auto"
-  let arg_name = "Auto | Bitwuzla | CVC5 | Z3"
 
   type t = Astral.Options.backend
 
   let default = `Auto
-  let all_values = [ `Bitwuzla; `CVC5; `Z3; `Auto ]
 
-  let to_string = function
-    | `Bitwuzla -> "Bitwuzla"
-    | `CVC5 -> "CVC5"
-    | `Z3 -> "Z3"
-    | `Auto -> "Auto"
+  let values =
+    [ (`Bitwuzla, "Bitwuzla"); (`CVC5, "CVC5"); (`Z3, "Z3"); (`Auto, "Auto") ]
 end)
 
 (** TODO: better names *)
 module Astral_mode = Self.Enum (struct
   let option_name = "-sl-astral-mode"
-  let help = ""
-  let arg_name = "old | new"
+  let help = "Old == builtin predicate encoding, New == user defined predicates"
 
   type t = [ `Old | `New ]
+
   let default = `Old
-  let all_values = [ `Old; `New ]
-  let to_string = function `Old -> "old" | `New -> "new"
+  let values = [ (`Old, "old"); (`New, "new") ]
 end)
 
 module Astral_encoding = Self.Enum (struct
   let option_name = "-sl-astral-encoding"
   let help = "Which location encoding should Astral use, default: Bitvectors"
-  let arg_name = "Bitvectors | Sets"
 
   type t = Astral.Options.encoding
 
   let default = `Bitvectors
-  let all_values = [ `Bitvectors; `Sets ]
-  let to_string = function `Bitvectors -> "Bitvectors" | `Sets -> "Sets"
+  let values = [ (`Bitvectors, "Bitvectors"); (`Sets, "Sets") ]
 end)
 
 module Print_sort = Self.False (struct

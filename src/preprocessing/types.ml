@@ -13,13 +13,12 @@ type struct_type = Sll | Dll | Nl | Struct
 (** Classification of struct fields *)
 type field_type = Next | Prev | Top | Other of string | Data
 
-let simplify_type (typ : typ) : typ =
-  typ |> unrollTypeDeep |> typeDeepDropAllAttributes
+let pp_typ_node fmt tnode = Cil_printer.pp_typ fmt { tnode; tattr = [] }
 
 let rec is_relevant_type (typ : typ) : bool =
-  match simplify_type typ with
+  match Ast_types.unroll_deep_node typ with
   | TComp _ -> true
-  | TPtr (inner, _) -> is_relevant_type inner
+  | TPtr inner -> is_relevant_type inner
   | _ -> false
 
 let is_relevant_var (var : varinfo) =
@@ -34,16 +33,16 @@ let rec get_self_and_sll_fields (structure : compinfo) :
   let self_pointers, other_pointers =
     structure |> get_struct_pointer_fields
     |> List.partition (fun field ->
-           match simplify_type field.ftype with
-           | TPtr (TComp (target_struct, _), _) ->
+           match Ast_types.unroll_deep_node field.ftype with
+           | TPtr { tnode = TComp target_struct; _ } ->
                target_struct.ckey = structure.ckey
            | _ -> false)
   in
   let sll_pointers =
     List.filter
       (fun field ->
-        match simplify_type field.ftype with
-        | TPtr (TComp (structure, _), _) -> get_struct_type structure = Sll
+        match Ast_types.unroll_deep_node field.ftype with
+        | TPtr { tnode = TComp structure; _ } -> get_struct_type structure = Sll
         | _ -> false)
       other_pointers
   in
@@ -74,17 +73,17 @@ let get_field_type (field : fieldinfo) : field_type =
   | [ _ ], [ next ] when field.forder = next.forder -> Next
   | _ -> if is_relevant_type field.ftype then Other field.fname else Data
 
-let type_info : (typ, Sort.t * MemoryModel.StructDef.t) Hashtbl.t =
+let type_info : (typ_node, Sort.t * MemoryModel.StructDef.t) Hashtbl.t =
   Hashtbl.create 113
 
 let rec get_type_info (typ : typ) : Sort.t * MemoryModel.StructDef.t =
-  let typ = simplify_type typ in
+  let typ = Ast_types.unroll_deep_node typ in
   Hashtbl.find_opt type_info typ |> function
   | Some result -> result
   | None -> (
       let dummy_struct_def = MemoryModel.StructDef.mk "dummy_struct_def" [] in
       match typ with
-      | TPtr (TComp (structure, _), _) -> (
+      | TPtr { tnode = TComp structure; _ } -> (
           match get_struct_type structure with
           | Sll -> (SL_builtins.loc_ls, dummy_struct_def)
           | Dll -> (SL_builtins.loc_dls, dummy_struct_def)
@@ -102,7 +101,7 @@ let rec get_type_info (typ : typ) : Sort.t * MemoryModel.StructDef.t =
               let result = (sort, struct_def) in
               Hashtbl.add type_info typ result;
               result)
-      | TPtr (inner, _) ->
+      | TPtr inner ->
           let name = Common.get_unique_name "ptr2ptr" in
           let sort = Sort.mk_loc name in
           let inner_sort = get_type_info inner |> fst in
@@ -113,7 +112,7 @@ let rec get_type_info (typ : typ) : Sort.t * MemoryModel.StructDef.t =
           let result = (sort, struct_def) in
           Hashtbl.add type_info typ result;
           result
-      | other -> fail "invalid type: %a" Printer.pp_typ other)
+      | other -> fail "invalid type: %a" pp_typ_node other)
 
 let get_struct_def (sort : Sort.t) : MemoryModel.StructDef.t =
   Hashtbl.to_seq_values type_info

@@ -8,7 +8,7 @@
   (synopsis "Frama-C plugin for shape analysis using separation logic")
   (depends
     (ocaml (>= 5.1.0))
-    (frama-c (>= 30.0))
+    (frama-c (= 31.0))
     astral
     (ppx_inline_test :build)
   )

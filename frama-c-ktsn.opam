@@ -4,8 +4,9 @@ synopsis: "Frama-C plugin for shape analysis using separation logic"
 maintainer: ["Tomas Brablec"]
 depends: [
   "dune" {>= "3.2"}
+  "ocaml" {>= "5.1.0"}
+  "frama-c" {= "31.0"}
   "astral"
-  "frama-c" {>= "30.0"}
   "ppx_inline_test" {build}
   "odoc" {with-doc}
 ]
@@ -24,4 +25,7 @@ build: [
     "@doc" {with-doc}
   ]
   ["dune" "install" "-p" name "--create-install-files" name]
+]
+pin-depends: [
+  ["astral.dev" "git+https://github.com/TDacik/Astral.git#dev"]
 ]

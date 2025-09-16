@@ -23,7 +23,7 @@ let replace_constants =
 
     method! vexpr (exp : exp) =
       match exp.enode with
-      | CastE (typ, exp) when isPointerType typ && is_nullptr exp ->
+      | CastE (typ, exp) when Ast_types.is_ptr typ && is_nullptr exp ->
           ChangeTo (evar nullptr_var)
       | Const _ | SizeOf _ | SizeOfE _ | SizeOfStr _ ->
           ChangeTo (evar const_var)

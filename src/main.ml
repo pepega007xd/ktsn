@@ -55,7 +55,7 @@ let main () =
       else raise e);
 
   (* dump analysis results *)
-  Solver.dump_stats !Common.solver;
+  Solver.dump_stats (Option.get !Common.solver);
   Func_call.merge_all_results ();
   Self.result "Astral time: %.2f" !Astral_query.solver_time
 

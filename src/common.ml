@@ -5,7 +5,7 @@ open Astral
     of the analyzer to avoid cyclic dependencies *)
 
 (** Astral solver instance *)
-let solver = ref (Solver.init ())
+let solver : Solver.solver option ref = ref None
 
 let fail message = Self.fatal ~current:true message
 let warning message = Self.warning ~current:true message

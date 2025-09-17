@@ -7,11 +7,11 @@ open Common
 (** Reference to a backend solver module *)
 let convertor = ref (module Astral_v1 : Astral_convertor_sig.CONVERTOR)
 
-let convert (formula : Formula.t) : Astral.SL.t = 
+let convert (formula : Formula.t) : Astral.SL.t =
   let module Convertor = (val !convertor) in
   Convertor.convert formula
 
-let convert_state (state : Formula.state) : Astral.SL.t = 
+let convert_state (state : Formula.state) : Astral.SL.t =
   let module Convertor = (val !convertor) in
   state |> List.map Convertor.convert |> SL.mk_or
 
@@ -29,13 +29,14 @@ let init () =
   in
   let backend = Config.Backend_solver.get () in
   let encoding = Config.Astral_encoding.get () in
-  let () = convertor := match Config.Astral_mode.get () with 
-    | `Old -> (module Astral_v1) 
-    | `New -> (module Astral_v2)
+  let () =
+    convertor :=
+      match Config.Astral_mode.get () with
+      | `Old -> (module Astral_v1)
+      | `New -> (module Astral_v2)
   in
   let module C = (val !convertor) in
-  Common.solver := C.init ~dump_queries ~backend ~encoding ()
-
+  Common.solver := Some (C.init ~dump_queries ~backend ~encoding ())
 
 let check_sat (formula : Formula.t) : bool =
   let astral_formula = convert formula in
@@ -46,9 +47,11 @@ let check_sat (formula : Formula.t) : bool =
     | Some result -> (true, result)
     | None ->
         let start = Unix.gettimeofday () in
-        let result = Solver.check_sat !solver astral_formula in
+        let result = Solver.check_sat (Option.get !solver) astral_formula in
         cnt := !cnt + 1;
-        Config.Self.debug ~level:2  "Query (sat) %d: %f -> %b \n" !cnt (Unix.gettimeofday () -. start) result;
+        Config.Self.debug ~level:2 "Query (sat) %d: %f -> %b \n" !cnt
+          (Unix.gettimeofday () -. start)
+          result;
         solver_time := !solver_time +. Unix.gettimeofday () -. start;
 
         Hashtbl.add !sat_cache cache_input result;
@@ -70,12 +73,13 @@ let check_entailment (lhs : Formula.state) (rhs : Formula.state) : bool =
     (Formula.canonicalize_state lhs, Formula.canonicalize_state rhs)
   in
 
-  let astral_lhs, astral_rhs =
-    (convert_state lhs, convert_state rhs)
-  in
+  let astral_lhs, astral_rhs = (convert_state lhs, convert_state rhs) in
   let fresh_vars_lhs = SL.get_vars astral_lhs |> List.filter is_fresh_var in
   let fresh_vars_rhs = SL.get_vars astral_rhs |> List.filter is_fresh_var in
-  let existential_vars = SL.Variable.Set.(elements @@ diff (of_list fresh_vars_rhs) (of_list fresh_vars_lhs)) in
+  let existential_vars =
+    SL.Variable.Set.(
+      elements @@ diff (of_list fresh_vars_rhs) (of_list fresh_vars_lhs))
+  in
   let astral_rhs = SL.mk_exists existential_vars astral_rhs in
 
   let cached, result =
@@ -83,9 +87,13 @@ let check_entailment (lhs : Formula.state) (rhs : Formula.state) : bool =
     | Some result -> (true, result)
     | None ->
         let start = Unix.gettimeofday () in
-        let result = Solver.check_entl !solver astral_lhs astral_rhs in
+        let result =
+          Solver.check_entl (Option.get !solver) astral_lhs astral_rhs
+        in
         cnt := !cnt + 1;
-        Config.Self.debug ~level:2 "Query (entl) %d: %f -> %b \n" !cnt (Unix.gettimeofday () -. start) result;
+        Config.Self.debug ~level:2 "Query (entl) %d: %f -> %b \n" !cnt
+          (Unix.gettimeofday () -. start)
+          result;
         solver_time := !solver_time +. Unix.gettimeofday () -. start;
 
         Hashtbl.add !entl_cache cache_input result;

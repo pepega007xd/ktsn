@@ -8,16 +8,19 @@ benchmark:
 	systemd-run --user --scope --slice=benchexec -p Delegate=yes \
 		benchexec bench/ktsn.xml --numOfThreads 8
 
+RESULTS_DIR := $(or $(word 2,$(MAKECMDGOALS)),results)
+
 verifit:
-	rm -rf results/*
-	scp -r verifit:ktsn/results .
-	$(MAKE) results
+	rm -rf $(RESULTS_DIR)
+	rsync -avz verifit:ktsn/$(RESULTS_DIR) .
+	$(MAKE) results $(RESULTS_DIR)
+
 
 results:
 	pip install bench/
-	table-generator -x bench/ktsn-results.xml -o results results/*.xml.bz2
+	table-generator -x bench/ktsn-results.xml -o $(RESULTS_DIR) $(RESULTS_DIR)/*.xml.bz2
 	python3 -m http.server -b 127.0.0.1 8000 -d .. | \
-	firefox 'localhost:8000/ktsn/results'
+	firefox "localhost:8000/ktsn/$(RESULTS_DIR)"
 
 ALLARGS := $(wordlist 2, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
 ARGS_WITH_SUFFIX := $(addsuffix /*.xml.bz2, $(ALLARGS))

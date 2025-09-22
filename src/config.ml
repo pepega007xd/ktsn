@@ -1,6 +1,6 @@
 (** This module contains the definitions of the command-line parameters *)
 
-let name = "ktsn"
+let name = "KTSN"
 
 module Self = Plugin.Register (struct
   let name = "Shape analysis"
@@ -26,7 +26,7 @@ module Edge_abstraction = Self.False (struct
      on loop return)"
 end)
 
-module Edge_deduplication = Self.False (struct
+module Edge_deduplication = Self.True (struct
   let option_name = "-sl-edge-deduplication"
 
   let help =
@@ -39,20 +39,22 @@ module Backend_solver = Self.Enum (struct
 
   type t = Astral.Options.backend
 
-  let default = `Auto
+  let default = `Bitwuzla
 
   let values =
     [ (`Bitwuzla, "Bitwuzla"); (`CVC5, "CVC5"); (`Z3, "Z3"); (`Auto, "Auto") ]
 end)
 
-(** TODO: better names *)
 module Astral_mode = Self.Enum (struct
   let option_name = "-sl-astral-mode"
-  let help = "Old == builtin predicate encoding, New == user defined predicates"
+
+  let help =
+    "Old == builtin predicate encoding, New == user defined predicates \
+     (default)"
 
   type t = [ `Old | `New ]
 
-  let default = `Old
+  let default = `New
   let values = [ (`Old, "old"); (`New, "new") ]
 end)
 
@@ -71,7 +73,7 @@ module Print_sort = Self.False (struct
   let help = "Print sort of variables along with their names"
 end)
 
-module Simple_join = Self.False (struct
+module Simple_join = Self.True (struct
   let option_name = "-sl-simple-join"
   let help = "Compute join of states using entailment on single formulas"
 end)
@@ -83,7 +85,9 @@ end)
 
 module Benchmark_mode = Self.False (struct
   let option_name = "-sl-benchmark-mode"
-  let help = "Enables features needed to run benchmarks"
+
+  let help =
+    "SV-COMP exit functions are treated as exits, allocations are infallible"
 end)
 
 module Max_loop_cycles = Self.Int (struct

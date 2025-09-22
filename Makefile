@@ -37,14 +37,11 @@ ARGS := $(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
 run:
 	dune build && dune install
 	ivette -scf -ulevel=3 $(FILE) -then-replace \
-		-sl -sl-msg-key '*' -sl-benchmark-mode -sl-astral-encoding Bitvectors \
-		-sl-backend-solver Bitwuzla -sl-edge-deduplication -sl-simple-join $(ARGS)
+	-sl -sl-msg-key '*' -sl-benchmark-mode $(ARGS)
 
 run-direct:
 	dune build && dune install
-	ivette -sl -sl-msg-key '*' -sl-benchmark-mode \
-		-sl-astral-encoding Bitvectors -sl-backend-solver Bitwuzla \
-		-sl-edge-deduplication -sl-simple-join $(ARGS) $(FILE)
+	ivette -sl -sl-msg-key '*' -sl-benchmark-mode $(ARGS) $(FILE)
 
 %:
 	@:

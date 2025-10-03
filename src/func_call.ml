@@ -67,7 +67,7 @@ let get_result_state (func : Kernel_function.t) (formula : Formula.t) :
       result_state
 
 let func_call (args : Formula.var list) (func : varinfo) (formula : Formula.t)
-    (lhs_opt : Formula.var option) : Formula.state =
+    (lhs_sort : Sort.t) : Formula.t list * Formula.var list =
   let func = Globals.Functions.get func in
   let fundec = Kernel_function.get_definition func in
   let return_stmt = Kernel_function.find_return func in
@@ -100,23 +100,20 @@ let func_call (args : Formula.var list) (func : varinfo) (formula : Formula.t)
       formula params args
   in
 
-  let convert_back_result (result : Formula.t) =
+  let convert_back_result (result : Formula.t) : Formula.t * Formula.var =
     let result = rename_anchors result @ unreachable in
-
-    (match lhs_opt with
-    | Some lhs ->
-        let return_var =
-          match return_stmt.skind with
-          | Return (Some { enode = Lval (Var var, NoOffset); _ }, _) ->
-              SL.Variable.mk var.vname (SL.Variable.get_sort lhs)
-          | _ -> assert false
-        in
-        result
-        |> Formula.substitute_by_fresh lhs
-        |> Formula.substitute ~var:return_var ~by:lhs
-    | None -> result)
-    |> Simplification.remove_ptos_from_vars end_of_scope_stack_vars
-    |> Simplification.convert_vars_to_fresh locals
+    let lhs = SL.Variable.mk_fresh "func_ret" lhs_sort in
+    let return_var =
+      match return_stmt.skind with
+      | Return (Some { enode = Lval (Var var, NoOffset); _ }, _) ->
+          SL.Variable.mk var.vname lhs_sort
+      | _ -> SL.Variable.mk "dummy" Sort.loc_nil
+    in
+    ( result
+      |> Formula.substitute ~var:return_var ~by:lhs
+      |> Simplification.remove_ptos_from_vars end_of_scope_stack_vars
+      |> Simplification.convert_vars_to_fresh locals,
+      lhs )
   in
 
   let reachable =
@@ -137,14 +134,15 @@ let func_call (args : Formula.var list) (func : varinfo) (formula : Formula.t)
     Formula.pp_formula formula Formula.pp_formula reachable Formula.pp_formula
     unreachable;
 
-  List.map convert_back_result result_state
+  List.map convert_back_result result_state |> List.split
 
 let func_call (args : Formula.var list) (func : varinfo) (formula : Formula.t)
-    (lhs_opt : Formula.var option) : Formula.state =
-  try func_call args func formula lhs_opt
+    (lhs_sort : Sort.t) : Formula.t list * Formula.var list =
+  try func_call args func formula lhs_sort
   with Kernel_function.No_Definition | Kernel_function.No_Statement ->
     warning "skipping function %s (no definition)" func.vname;
-    [ formula ]
+    (* TODO: should this be a hard error? *)
+    ([ formula ], [ Formula.nil ])
 
 (** Merges results of analyses of all functions into the current [results]
     table, so that it can be displayed by Ivette *)

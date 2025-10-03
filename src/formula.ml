@@ -98,7 +98,7 @@ let pp_formula (fmt : Format.formatter) (formula : t) =
   if formula = "" then Format.fprintf fmt "emp"
   else Format.fprintf fmt "%s" formula
 
-let show_formula (f : t) : unit = Config.Self.warning "FORMULA: %a" pp_formula f
+let show_formula (f : t) : unit = Common.warning "FORMULA: %a" pp_formula f
 
 let pp_state (fmt : Format.formatter) (state : state) =
   List.iter
@@ -186,14 +186,12 @@ let swap_vars (var1 : var) (var2 : var) (f : t) =
   |> substitute ~var:tmp_name ~by:var2
 
 (** sets the names of fresh variables to a sequence of [!0], [!1], ... *)
-let standardize_fresh_var_names ?(start_from : int = 0) (f : t) : t =
+let standardize_fresh_var_names (f : t) : t =
   let vars = get_fresh_vars f |> List.sort_uniq SL.Variable.compare in
   let names =
     List.mapi
       (fun idx var ->
-        SL.Variable.mk
-          ("!" ^ string_of_int (idx + start_from))
-          (SL.Variable.get_sort var))
+        SL.Variable.mk ("!" ^ string_of_int idx) (SL.Variable.get_sort var))
       vars
   in
   List.fold_left2 (fun f var by -> substitute ~var ~by f) f vars names
@@ -302,7 +300,12 @@ let is_spatial_target (target : var) (f : t) : bool =
   |> List.exists (fun atom ->
          get_targets_of_atom atom |> List.exists (fun var -> is_eq target var f))
 
-let get_spatial_target (src : var) (field : Types.field_type) (f : t) :
+let get_spatial_target (src : var) (field : Types.field_type) (f : t) : var =
+  get_spatial_atom_from_opt src f |> function
+  | Some var -> get_target_of_atom field var
+  | None -> raise @@ Invalid_deref (src, f)
+
+let get_spatial_target_opt (src : var) (field : Types.field_type) (f : t) :
     var option =
   get_spatial_atom_from_opt src f |> Option.map (get_target_of_atom field)
 
@@ -531,9 +534,12 @@ let count_relevant_occurences (var : var) (f : t) : int =
   |> get_vars |> Common.list_count var
 
 (** Converts a formula into a canonical form by sorting variables and atoms *)
-let canonicalize (f : t) : t =
+let canonicalize ?(rename_fresh = true) (f : t) : t =
   let c = SL.Variable.compare in
   let vars = f |> get_vars |> List.sort_uniq c in
+  let standardize_fresh_var_names =
+    if rename_fresh then standardize_fresh_var_names else Fun.id
+  in
 
   List.fold_left (fun f var -> make_var_explicit_src var f) f vars
   |> List.map (function
@@ -543,8 +549,8 @@ let canonicalize (f : t) : t =
        | atom -> atom)
   |> List.sort_uniq compare |> standardize_fresh_var_names
 
-let canonicalize_state (state : state) : state =
-  state |> List.map canonicalize |> List.sort_uniq compare
+let canonicalize_state ?(rename_fresh = true) (state : state) : state =
+  state |> List.map (canonicalize ~rename_fresh) |> List.sort_uniq compare
 
 let bound_of_atom (with_ptos : bool) : atom -> int = function
   | LS { min_len; _ } | DLS { min_len; _ } | NLS { min_len; _ } -> min_len

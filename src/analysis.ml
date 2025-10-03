@@ -23,44 +23,9 @@ let doInstr _ (instr : instr) (prev_state : t) : t =
   Async.yield ();
 
   let new_state =
-    match Instruction_type.get_instr_type instr with
-    (* assignment into "_const" is used to check if rhs is allocated *)
-    | Assign_simple (lhs, rhs) when lhs.vname = Constants.const_var_name ->
-        prev_state
-        |> List.concat_map (Formula.materialize (var rhs))
-        |> List.iter (Formula.assert_allocated (var rhs));
-        prev_state
-    | Assign_simple (lhs, rhs) ->
-        prev_state |> List.map (Transfer.assign (var lhs) (var rhs))
-    | Assign_rhs_field (lhs, rhs, rhs_field) ->
-        prev_state
-        |> List.concat_map (Formula.materialize (var rhs))
-        |> List.map
-             (Transfer.assign_rhs_field (var lhs) (var rhs)
-                (Types.get_field_type rhs_field))
-    | Assign_lhs_field (lhs, lhs_field, rhs) ->
-        prev_state
-        |> List.concat_map (Formula.materialize (var lhs))
-        |> List.map
-             (Transfer.assign_lhs_field (var lhs)
-                (Types.get_field_type lhs_field)
-                (var rhs))
-    | Assign_deref_rhs (lhs, rhs) ->
-        List.map
-          (Transfer.assign_rhs_field (var lhs) (var rhs)
-             (Other Constants.ptr_field_name))
-          prev_state
-    | Assign_deref_lhs (lhs, rhs) ->
-        prev_state |> List.map (Transfer.assign_lhs_deref (var lhs) (var rhs))
-    | Assign_ref (lhs, rhs) ->
-        List.map (Transfer.assign_ref (var lhs) (var rhs)) prev_state
-    | Call (lhs_opt, func, params) ->
-        prev_state
-        |> List.concat_map
-             (Transfer.call (Option.map var lhs_opt) func (List.map var params))
-    | ComplexInstr -> assert false
-    | Ignored -> prev_state
+    List.concat_map (Interpretation.interpret_instr instr) prev_state
   in
+
   Self.debug ~current:true ~dkey:Printing.do_instr
     "previous state:\n%anew state:\n%a" Formula.pp_state prev_state
     Formula.pp_state new_state;
@@ -196,8 +161,8 @@ let doStmt (stmt : stmt) (_ : t) : t stmtaction =
           Hashtbl.add loop_cycles stmt (Config.Max_loop_cycles.get ());
           SDefault)
   | Instr instr when Config.Svcomp_mode.get () -> (
-      match Instruction_type.get_instr_type instr with
-      | Instruction_type.Call (_, fn, _) ->
+      match instr with
+      | Call (_, { enode = Lval (Var fn, NoOffset); _ }, _, _) ->
           if List.mem fn.vname [ "reach_error"; "myexit"; "fail"; "exit" ] then
             SDone
           else SDefault
@@ -246,7 +211,7 @@ let doEdge (prev_stmt : stmt) (next_stmt : stmt) (state : t) : t =
     |> List.map do_abstraction
     |> List.map remove_irrelevant_vars
     |> List.map remove_empty_lists
-    |> Formula.canonicalize_state
+    |> Formula.canonicalize_state ~rename_fresh:false
     |> Common.list_map_pairs generalize_similar_formulas
     (* deduplicate formulas syntactically *)
     |> List.sort_uniq compare

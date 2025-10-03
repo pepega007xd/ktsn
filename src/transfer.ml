@@ -12,7 +12,7 @@ let assign (lhs : Formula.var) (rhs : Formula.var) (formula : Formula.t) :
 let assign_rhs_field (lhs : Formula.var) (rhs : Formula.var)
     (rhs_field : Types.field_type) (formula : Formula.t) : Formula.t =
   let rhs_target =
-    Formula.get_spatial_target rhs rhs_field formula |> function
+    Formula.get_spatial_target_opt rhs rhs_field formula |> function
     | Some rhs -> rhs
     | None -> Formula.report_bug (Invalid_deref (rhs, formula))
   in
@@ -28,9 +28,7 @@ let stack_ptr_field = Types.Other Constants.ptr_field_name
 (** transfer function for [*var = var;], lhs is assumed to be a stack pointer *)
 let assign_lhs_deref (lhs : Formula.var) (rhs : Formula.var)
     (formula : Formula.t) : Formula.t =
-  let lhs_target =
-    Formula.get_spatial_target lhs stack_ptr_field formula |> Option.get
-  in
+  let lhs_target = Formula.get_spatial_target lhs stack_ptr_field formula in
   assign lhs_target rhs formula
   |> Formula.change_pto_target lhs stack_ptr_field lhs_target
 
@@ -38,7 +36,7 @@ let assign_lhs_deref (lhs : Formula.var) (rhs : Formula.var)
     _target ptr and change it, otherwise add it *)
 let assign_ref (lhs : Formula.var) (rhs : Formula.var) (formula : Formula.t) :
     Formula.t =
-  match Formula.get_spatial_target lhs stack_ptr_field formula with
+  match Formula.get_spatial_target_opt lhs stack_ptr_field formula with
   | Some _ -> Formula.change_pto_target lhs stack_ptr_field rhs formula
   | None ->
       Formula.add_atom
@@ -46,77 +44,72 @@ let assign_ref (lhs : Formula.var) (rhs : Formula.var) (formula : Formula.t) :
         formula
 
 (** transfer function for function calls *)
-let call (lhs_opt : Formula.var option) (func : Cil_types.varinfo)
-    (args : Formula.var list) (formula : Formula.t) : Formula.state =
-  let get_allocation (init_vars_to_null : bool) : Formula.state =
-    let lhs, pto =
-      match lhs_opt with
-      | Some lhs -> (
-          let sort = SL.Variable.get_sort lhs in
-          let fresh_from_lhs () =
-            if init_vars_to_null then Formula.nil
-            else Common.mk_fresh_var_from lhs
+let call (lhs_sort : SL.Sort.t) (func : Cil_types.varinfo)
+    (args : Formula.var list) (formula : Formula.t) :
+    Formula.t list * Formula.var list =
+  let get_allocation (init_vars_to_null : bool) =
+    let lhs = SL.Variable.mk_fresh "func_ret" lhs_sort in
+    let pto =
+      let fresh_from_lhs () =
+        if init_vars_to_null then Formula.nil
+        else SL.Variable.mk_fresh "fresh" lhs_sort
+      in
+      match () with
+      | _ when lhs_sort = SL_builtins.loc_ls || lhs_sort = SL.Sort.loc_nil ->
+          Formula.PointsTo (lhs, LS_t (fresh_from_lhs ()))
+      | _ when lhs_sort = SL_builtins.loc_dls ->
+          Formula.PointsTo (lhs, DLS_t (fresh_from_lhs (), fresh_from_lhs ()))
+      | _ when lhs_sort = SL_builtins.loc_nls ->
+          Formula.PointsTo (lhs, NLS_t (fresh_from_lhs (), fresh_from_lhs ()))
+      | _ ->
+          let fields =
+            Types.get_struct_def lhs_sort |> MemoryModel.StructDef.get_fields
           in
-          ( lhs,
-            match () with
-            | _ when sort = SL_builtins.loc_ls ->
-                Formula.PointsTo (lhs, LS_t (fresh_from_lhs ()))
-            | _ when sort = SL_builtins.loc_dls ->
-                Formula.PointsTo
-                  (lhs, DLS_t (fresh_from_lhs (), fresh_from_lhs ()))
-            | _ when sort = SL_builtins.loc_nls ->
-                Formula.PointsTo
-                  (lhs, NLS_t (fresh_from_lhs (), fresh_from_lhs ()))
-            | _ ->
-                let fields =
-                  Types.get_struct_def sort |> MemoryModel.StructDef.get_fields
-                in
-                let names = List.map MemoryModel0.Field.show fields in
-                let vars =
-                  if init_vars_to_null then
-                    List.map (fun _ -> Formula.nil) fields
-                  else
-                    List.map MemoryModel0.Field.get_sort fields
-                    |> List.map
-                         (SL.Variable.mk_fresh (SL.Variable.get_name lhs))
-                in
-                Formula.PointsTo (lhs, Generic (List.combine names vars)) ))
-      | None ->
-          let lhs = SL.Variable.mk_fresh "leak" Sort.loc_nil in
-          (lhs, Formula.PointsTo (lhs, LS_t (Common.mk_fresh_var_from lhs)))
+          let names = List.map MemoryModel0.Field.show fields in
+          let vars =
+            if init_vars_to_null then List.map (fun _ -> Formula.nil) fields
+            else
+              List.map MemoryModel0.Field.get_sort fields
+              |> List.map (SL.Variable.mk_fresh (SL.Variable.get_name lhs))
+          in
+          Formula.PointsTo (lhs, Generic (List.combine names vars))
     in
-    let allocation =
-      formula |> Formula.substitute_by_fresh lhs |> Formula.add_atom pto
-    in
-    if Config.Svcomp_mode.get () then [ allocation ]
+    let allocation = formula |> Formula.add_atom pto in
+    if Config.Svcomp_mode.get () then ([ allocation ], [ lhs ])
     else
-      [
-        allocation;
-        formula
-        |> Formula.substitute_by_fresh lhs
-        |> Formula.add_eq lhs Formula.nil;
-      ]
+      ( [
+          (* success *)
+          allocation;
+          (* failure *)
+          formula
+          |> Formula.substitute_by_fresh lhs
+          |> Formula.add_eq lhs Formula.nil;
+        ],
+        [ lhs; lhs ] )
   in
 
   match (func.vname, args) with
   | "malloc", _ -> get_allocation false
   | "calloc", _ -> get_allocation true
-  | "realloc", var :: _ ->
-      (* realloc changes the pointer value => all references to `var` are now dangling *)
-      Formula.materialize var formula
-      |> List.map (fun formula ->
-             let spatial_atom = Formula.get_spatial_atom_from var formula in
-             formula
-             |> Formula.remove_spatial_from var
-             |> Formula.substitute_by_fresh var
-             |> Formula.add_atom spatial_atom)
+  (*TODO: *)
+  (* | "realloc", var :: _ -> *)
+  (*     (* realloc changes the pointer value => all references to `var` are now dangling *) *)
+  (*     Formula.materialize var formula *)
+  (*     |> List.map (fun formula -> *)
+  (*            let spatial_atom = Formula.get_spatial_atom_from var formula in *)
+  (*            formula *)
+  (*            |> Formula.remove_spatial_from var *)
+  (*            |> Formula.substitute_by_fresh var *)
+  (*            |> Formula.add_atom spatial_atom) *)
   | "free", [ src ] -> (
       try
         formula |> Formula.materialize src
         |> List.map (Formula.remove_spatial_from src)
         |> List.map (Formula.add_atom @@ Formula.Freed src)
+        |> List.map (fun f -> (f, Formula.nil))
+        |> List.split
       with
       | Formula.Bug (Invalid_deref (var, formula), pos) ->
           raise @@ Formula.Bug (Invalid_free (var, formula), pos)
       | e -> raise e)
-  | _, args -> Func_call.func_call args func formula lhs_opt
+  | _, args -> Func_call.func_call args func formula lhs_sort

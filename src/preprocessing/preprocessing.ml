@@ -54,44 +54,6 @@ let remove_local_init =
       | _ -> SkipChildren
   end
 
-let remove_irrelevant_stmts =
-  object
-    inherit Visitor.frama_c_inplace
-
-    method! vinst (instr : instr) =
-      let loc = Cil_datatype.Instr.loc instr in
-      let keep = SkipChildren in
-      let skip = ChangeTo [ Skip loc ] in
-      let assert_allocated var =
-        ChangeTo [ Ast_info.mkassign (Var const_var, NoOffset) (evar var) loc ]
-      in
-      let is_relevant var =
-        Types.is_relevant_var var || var.vname = Constants.null_var_name
-      in
-      match Instruction_type.get_instr_type instr with
-      | Assign_simple (lhs, _) when is_relevant lhs -> keep
-      | (Assign_rhs_field (lhs, _, _) | Assign_deref_rhs (lhs, _))
-        when is_relevant lhs ->
-          keep
-      | (Assign_rhs_field (_, rhs, _) | Assign_deref_rhs (_, rhs))
-        when is_relevant rhs ->
-          assert_allocated rhs
-      | (Assign_lhs_field (_, _, rhs) | Assign_deref_lhs (_, rhs))
-        when is_relevant rhs ->
-          keep
-      | (Assign_lhs_field (lhs, _, _) | Assign_deref_lhs (lhs, _))
-        when is_relevant lhs ->
-          assert_allocated lhs
-      | Assign_ref (_, rhs) when is_relevant rhs -> keep
-      | Call (Some lhs, _, _) when is_relevant lhs -> keep
-      (* skip de/allocation functions used with non-relevant types *)
-      | Call (_, fn, _) when List.mem fn.vname [ "malloc"; "calloc" ] -> skip
-      | Call (_, fn, []) when fn.vname = "free" -> skip
-      | Call (_, fn, args) ->
-          ChangeTo [ Call (None, evar fn, List.map evar args, loc) ]
-      | _ -> skip
-  end
-
 let remove_noop_assignments =
   object
     inherit Visitor.frama_c_inplace
@@ -186,8 +148,8 @@ let collect_stack_allocated_vars =
     inherit Visitor.frama_c_inplace
 
     method! vinst (instr : instr) =
-      match Instruction_type.get_instr_type instr with
-      | Assign_ref (lhs, _) ->
+      match instr with
+      | Set ((Var lhs, NoOffset), { enode = AddrOf (Var _, NoOffset); _ }, _) ->
           stack_allocated_vars :=
             Types.varinfo_to_var lhs :: !stack_allocated_vars;
           SkipChildren
@@ -213,12 +175,10 @@ let preprocess () =
   Visitor.visitFramacFileFunctions remove_local_init file;
   Visitor.visitFramacFileFunctions remove_irrelevant_call_args file;
   Visitor.visitFramacFileFunctions remove_noop_assignments file;
-  Visitor.visitFramacFileFunctions Stmt_split.split_complex_stmts file;
   Visitor.visitFramacFileFunctions remove_not_operator file;
   Visitor.visitFramacFileFunctions Condition_split.collect_nondet_int_vars file;
   Visitor.visitFramacFileFunctions Condition_split.split_conditions file;
   Visitor.visitFramacFileFunctions remove_noop_assignments file;
-  Visitor.visitFramacFileFunctions remove_irrelevant_stmts file;
   Types.process_types file;
   Visitor.visitFramacFileFunctions collect_stack_allocated_vars file;
 

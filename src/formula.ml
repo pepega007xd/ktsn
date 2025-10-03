@@ -302,7 +302,12 @@ let is_spatial_target (target : var) (f : t) : bool =
   |> List.exists (fun atom ->
          get_targets_of_atom atom |> List.exists (fun var -> is_eq target var f))
 
-let get_spatial_target (src : var) (field : Types.field_type) (f : t) :
+let get_spatial_target (src : var) (field : Types.field_type) (f : t) : var =
+  get_spatial_atom_from_opt src f |> function
+  | Some var -> get_target_of_atom field var
+  | None -> raise @@ Invalid_deref (src, f)
+
+let get_spatial_target_opt (src : var) (field : Types.field_type) (f : t) :
     var option =
   get_spatial_atom_from_opt src f |> Option.map (get_target_of_atom field)
 

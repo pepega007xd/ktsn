@@ -112,7 +112,8 @@ let rec get_type_info (typ : typ) : Sort.t * MemoryModel.StructDef.t =
           let result = (sort, struct_def) in
           Hashtbl.add type_info typ result;
           result
-      | other -> fail "invalid type: %a" pp_typ_node other)
+      (*TODO: return proper sort for integers from get_type_info *)
+      | _ -> (Sort.loc_nil, dummy_struct_def))
 
 let get_struct_def (sort : Sort.t) : MemoryModel.StructDef.t =
   Hashtbl.to_seq_values type_info
@@ -126,6 +127,7 @@ let varinfo_to_var (varinfo : Cil_types.varinfo) : SL.Variable.t =
   | name when name = const_var_name -> fail "_const in varinfo_to_var"
   | name when name = nondet_var_name -> fail "_nondet in varinfo_to_var"
   | _ when not @@ is_relevant_var varinfo ->
+      (* TODO: return proper integer var *)
       fail "invalid type in varinfo_to_var: %a" Printer.pp_varinfo varinfo
   | _ ->
       let sort = varinfo.vtype |> get_type_info |> fst in

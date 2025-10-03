@@ -112,8 +112,8 @@ let unify_sublists (lhs_source : Formula.var) (rhs_source : Formula.var)
   let lhs_next = Formula.get_target_of_atom Types.Next lhs in
   let rhs_next = Formula.get_target_of_atom Types.Next rhs in
 
-  let lhs_target = Formula.get_spatial_target lhs_next Types.Next formula in
-  let rhs_target = Formula.get_spatial_target rhs_next Types.Next formula in
+  let lhs_target = Formula.get_spatial_target_opt lhs_next Types.Next formula in
+  let rhs_target = Formula.get_spatial_target_opt rhs_next Types.Next formula in
 
   let ( = ) x y = Formula.is_eq x y formula in
   let uf x = is_unique_fresh x formula in

@@ -12,8 +12,13 @@ let collect_nondet_int_vars =
     inherit Visitor.frama_c_inplace
 
     method! vinst (instr : instr) =
-      match Instruction_type.get_instr_type instr with
-      | Call (Some lhs, fn, _) when fn.vname = "__VERIFIER_nondet_int" ->
+      match instr with
+      | Call
+          ( Some (Var lhs, NoOffset),
+            { enode = Lval (Var fn, NoOffset); _ },
+            _,
+            _ )
+        when fn.vname = "__VERIFIER_nondet_int" ->
           nondet_int_vars := lhs.vname :: !nondet_int_vars;
           SkipChildren
       | _ -> SkipChildren

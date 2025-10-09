@@ -54,8 +54,8 @@ let main () =
   | e ->
       if Config.Catch_exceptions.get () then (
         let backtrace = Printexc.get_backtrace () in
-        Self.warning "EXCEPTION: %s" (Printexc.to_string e);
-        Self.warning "BACKTRACE: \n%s" backtrace)
+        Common.warning "EXCEPTION: %s" (Printexc.to_string e);
+        Common.warning "BACKTRACE: \n%s" backtrace)
       else raise e);
 
   (* dump analysis results *)

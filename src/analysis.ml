@@ -15,72 +15,6 @@ let copy state = state
 let pretty fmt state = Formula.pp_state fmt state
 let var = Types.varinfo_to_var
 
-(* TODO: Materializations? *)
-let rec eval (formula : Formula.t) (exp : exp) : Formula.var =
-  let eval = eval formula in
-
-  match exp.enode with
-  | Lval (Var v, NoOffset) -> var v
-  | Lval (Mem inner, NoOffset) ->
-      Formula.get_spatial_target (eval inner) (Other Constants.ptr_field_name)
-        formula
-  | Lval (Mem inner, Field (field, NoOffset)) ->
-      Formula.get_spatial_target (eval inner)
-        (Types.get_field_type field)
-        formula
-  | _ -> fail "unsupported expr: %a" Printer.pp_exp exp
-
-let set_value (lhs : lval) (rhs : Formula.var) (formula : Formula.t) : Formula.t
-    =
-  let eval = eval formula in
-  match lhs with
-  | lhs when Cil.typeOfLval lhs |> Types.is_relevant_type |> not ->
-      (* TODO: check validity of accesses inside non-ptr expressions *)
-      (* ignore @@ eval @@ Cil.dummy_exp (Lval lhs); *)
-      (* ignore @@ eval rhs; *)
-      formula
-  (* *expr = expr; *)
-  | Mem lhs, NoOffset -> Transfer.assign_lhs_deref (eval lhs) rhs formula
-  (* expr->field = expr; *)
-  | Mem lhs, Field (lhs_field, NoOffset) ->
-      Transfer.assign_lhs_field (eval lhs)
-        (Types.get_field_type lhs_field)
-        rhs formula
-  (* var = expr; *)
-  | Var lhs, NoOffset -> Transfer.assign (var lhs) rhs formula
-  | _ -> fail "invaliud lval: %a" Printer.pp_lval lhs
-
-(* TODO: Materializations? *)
-let interpret_instr (instr : instr) (formula : Formula.t) : Formula.t list =
-  let eval = eval formula in
-  match instr with
-  | Set (lhs, rhs, _) when Cil.typeOfLval lhs |> Types.is_relevant_type |> not
-    ->
-      (* TODO: check validity of accesses inside non-ptr expressions *)
-      (* ignore @@ eval @@ Cil.dummy_exp (Lval lhs); *)
-      (* ignore @@ eval rhs; *)
-      [ formula ]
-  (* var = &var; // limited form, only used for stack pointers *)
-  | Set ((Var lhs, NoOffset), { enode = AddrOf (Var rhs, NoOffset); _ }, _) ->
-      [ Transfer.assign_ref (var lhs) (var rhs) formula ]
-  (* [var =] func(expr1, expr2, ...); *)
-  | Set (lhs, rhs, _) -> [ set_value lhs (eval rhs) formula ]
-  | Call (lhs_option, { enode = Lval (Var func, NoOffset); _ }, args, _) -> (
-      let lhs_sort =
-        Option.map
-          (fun lhs -> Cil.typeOfLval lhs |> Types.get_type_info |> fst)
-          lhs_option
-        |> Option.value ~default:Astral.Sort.loc_nil
-      in
-      let formulas, return_vars =
-        Transfer.call lhs_sort func (List.map eval args) formula
-      in
-      lhs_option |> function
-      | Some lhs -> List.map2 (set_value lhs) return_vars formulas
-      | None -> formulas)
-  | Skip _ -> [ formula ]
-  | _ -> fail "unsupported instr: %a" Cil_printer.pp_instr instr
-
 (** this is the transfer function for instructions, we take the instr and
     previous state, and create new state *)
 let doInstr _ (instr : instr) (prev_state : t) : t =
@@ -88,7 +22,9 @@ let doInstr _ (instr : instr) (prev_state : t) : t =
      state of analysis (messages, AST properties, etc) *)
   Async.yield ();
 
-  let new_state = List.concat_map (interpret_instr instr) prev_state in
+  let new_state =
+    List.concat_map (Interpretation.interpret_instr instr) prev_state
+  in
 
   Self.debug ~current:true ~dkey:Printing.do_instr
     "previous state:\n%anew state:\n%a" Formula.pp_state prev_state
@@ -275,7 +211,7 @@ let doEdge (prev_stmt : stmt) (next_stmt : stmt) (state : t) : t =
     |> List.map do_abstraction
     |> List.map remove_irrelevant_vars
     |> List.map remove_empty_lists
-    |> Formula.canonicalize_state
+    |> Formula.canonicalize_state ~rename_fresh:false
     |> Common.list_map_pairs generalize_similar_formulas
     (* deduplicate formulas syntactically *)
     |> List.sort_uniq compare

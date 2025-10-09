@@ -89,9 +89,9 @@ let call (lhs_sort : SL.Sort.t) (func : Cil_types.varinfo)
   in
 
   match (func.vname, args) with
-  (*TODO: *)
   | "malloc", _ -> get_allocation false
   | "calloc", _ -> get_allocation true
+  (*TODO: *)
   (* | "realloc", var :: _ -> *)
   (*     (* realloc changes the pointer value => all references to `var` are now dangling *) *)
   (*     Formula.materialize var formula *)

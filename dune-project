@@ -10,6 +10,8 @@
     (ocaml (>= 5.1.0))
     (frama-c (= 31.0))
     astral
+    sha
+    uuidm
     (ppx_inline_test :build)
   )
 )

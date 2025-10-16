@@ -27,8 +27,12 @@ type atom =
 type t = atom list
 
 (* Exceptions used to report bugs in the analyzed program *)
-exception Invalid_deref of var * t
-exception Invalid_free of var * t
+type bug_type =
+  | Invalid_memtrack of atom * t
+  | Invalid_deref of var * t
+  | Invalid_free of var * t
+
+exception Bug of bug_type
 
 (* state stored by each CFG node in dataflow analysis *)
 type state = t list
@@ -98,6 +102,18 @@ let pp_state (fmt : Format.formatter) (state : state) =
       pp_formula fmt formula;
       Format.fprintf fmt "\n")
     state
+
+let pp_bug_type (fmt : Format.formatter) (bug_type : bug_type) =
+  match bug_type with
+  | Invalid_memtrack (atom, f) ->
+      Format.fprintf fmt "Invalid_memtrack: atom '%a' in formula '%a'" pp_atom
+        atom pp_formula f
+  | Invalid_deref (var, f) ->
+      Format.fprintf fmt "Invalid_deref: var '%a' in formula '%a'"
+        SL.Variable.pp var pp_formula f
+  | Invalid_free (var, f) ->
+      Format.fprintf fmt "Invalid_free: var '%a' in formula '%a'" SL.Variable.pp
+        var pp_formula f
 
 (** Variables *)
 
@@ -250,7 +266,7 @@ let get_spatial_atom_from_first_opt (src : var) (f : t) : atom option =
 let get_spatial_atom_from (src : var) (f : t) : atom =
   get_spatial_atom_from_opt src f |> function
   | Some atom -> atom
-  | None -> raise @@ Invalid_deref (src, f)
+  | None -> raise @@ Bug (Invalid_deref (src, f))
 
 let get_target_of_atom (field : Types.field_type) (atom : atom) : var =
   match (atom, field) with

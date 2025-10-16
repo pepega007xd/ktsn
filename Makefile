@@ -1,9 +1,8 @@
 .DEFAULT_GOAL := benchmark
-.PHONY: benchmark verifit results results-diff run run-direct clean bp-archive
+.PHONY: benchmark verifit results results-diff run run-direct build clean bp-archive
 
-benchmark:
+benchmark: build
 	pip install bench/
-	dune build && dune install
 	rm -rf results/*
 	systemd-run --user --scope --slice=benchexec -p Delegate=yes \
 		benchexec bench/ktsn.xml --numOfThreads 8
@@ -34,14 +33,15 @@ results-diff:
 FILE := $(word 2, $(MAKECMDGOALS))
 ARGS := $(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
 
-run:
-	dune build && dune install
+run: build
 	ivette -scf -ulevel=3 $(FILE) -then-replace \
 	-sl -sl-msg-key '*' -sl-benchmark-mode $(ARGS)
 
-run-direct:
-	dune build && dune install
+run-direct: build
 	ivette -sl -sl-msg-key '*' -sl-benchmark-mode $(ARGS) $(FILE)
+
+build:
+	dune build && dune install
 
 %:
 	@:

@@ -1,4 +1,3 @@
-open Config
 open Astral
 open Common
 
@@ -72,7 +71,7 @@ let remove_leaks (formula : Formula.t) : Formula.t =
     List.iter
       (fun atom ->
         if Formula.bound_of_atom true atom > 0 then
-          Self.warning ~current:true "leak of atom %a" Formula.pp_atom atom)
+          raise @@ Formula.Bug (Invalid_memtrack (atom, formula)))
       junk_atoms;
     valid_atoms)
 

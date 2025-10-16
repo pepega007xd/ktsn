@@ -27,26 +27,26 @@ let run_analysis () =
 
   (* check if there are any allocations left after the main function *)
   let return_stmt = Kernel_function.find_return main in
-  if
+  let final_state =
     Hashtbl.find !Func_call.function_context.results return_stmt
-    |> List.concat |> Formula.get_spatial_atoms |> List.is_empty |> not
-  then Self.result "leak of atom after main function"
+  in
+  List.iter
+    (fun formula ->
+      Formula.get_spatial_atoms formula |> function
+      | atom :: _ -> raise @@ Formula.Bug (Invalid_memtrack (atom, formula))
+      | _ -> ())
+    final_state
 
 let main () =
   Printexc.record_backtrace true;
 
   (* run the analysis and catch exceptions representing bug detections *)
   (try run_analysis () with
-  | Formula.Invalid_deref (var, formula)
-    when not !Analysis.unknown_condition_reached ->
-      Common.warning "Invalid_deref: var '%a' in formula '%a'" SL.Variable.pp
-        var Formula.pp_formula formula
-  | Formula.Invalid_free (var, formula)
-    when not !Analysis.unknown_condition_reached ->
-      Common.warning "Invalid_free: var '%a' in formula '%a'" SL.Variable.pp var
-        Formula.pp_formula formula
-  | Formula.Invalid_deref _ | Formula.Invalid_free _ ->
+  | Formula.Bug _ when !Analysis.unknown_condition_reached ->
       Common.warning "unknown result"
+  | Formula.Bug bug_type ->
+      if Config.Benchmark_mode.get () then Witness.write_witness bug_type;
+      Common.warning "%a" Formula.pp_bug_type bug_type
   | e ->
       if Config.Catch_exceptions.get () then (
         let backtrace = Printexc.get_backtrace () in

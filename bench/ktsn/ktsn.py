@@ -44,7 +44,7 @@ class Tool(benchexec.tools.template.BaseTool2):
         if run.output.any_line_contains("Invalid_free"):
             return result.RESULT_FALSE_FREE
 
-        if run.output.any_line_contains("leak of atom"):
+        if run.output.any_line_contains("Invalid_memtrack"):
             return result.RESULT_FALSE_MEMTRACK
 
         if run.output.any_line_contains("unknown result"):

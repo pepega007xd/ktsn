@@ -27,6 +27,8 @@
     frama-c.kernel
     frama-c-server.core
     astral
+    sha
+    uuidm
   )
   (inline_tests
     ; this is required to run inline tests in frama-c plugin

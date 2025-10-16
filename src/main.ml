@@ -33,7 +33,7 @@ let run_analysis () =
   List.iter
     (fun formula ->
       Formula.get_spatial_atoms formula |> function
-      | atom :: _ -> raise @@ Formula.Bug (Invalid_memtrack (atom, formula))
+      | atom :: _ -> Formula.report_bug (Invalid_memtrack (atom, formula))
       | _ -> ())
     final_state
 
@@ -44,8 +44,8 @@ let main () =
   (try run_analysis () with
   | Formula.Bug _ when !Analysis.unknown_condition_reached ->
       Common.warning "unknown result"
-  | Formula.Bug bug_type ->
-      if Config.Benchmark_mode.get () then Witness.write_witness bug_type;
+  | Formula.Bug (bug_type, pos) ->
+      if Config.Benchmark_mode.get () then Witness.write_witness bug_type pos;
       Common.warning "%a" Formula.pp_bug_type bug_type
   | e ->
       if Config.Catch_exceptions.get () then (

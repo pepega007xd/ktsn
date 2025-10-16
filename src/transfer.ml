@@ -14,7 +14,7 @@ let assign_rhs_field (lhs : Formula.var) (rhs : Formula.var)
   let rhs_target =
     Formula.get_spatial_target rhs rhs_field formula |> function
     | Some rhs -> rhs
-    | None -> raise @@ Formula.Bug (Invalid_deref (rhs, formula))
+    | None -> Formula.report_bug (Invalid_deref (rhs, formula))
   in
   if lhs = rhs_target then formula else assign lhs rhs_target formula
 
@@ -116,7 +116,7 @@ let call (lhs_opt : Formula.var option) (func : Cil_types.varinfo)
         |> List.map (Formula.remove_spatial_from src)
         |> List.map (Formula.add_atom @@ Formula.Freed src)
       with
-      | Formula.Bug (Invalid_deref (var, formula)) ->
-          raise @@ Formula.Bug (Invalid_free (var, formula))
+      | Formula.Bug (Invalid_deref (var, formula), pos) ->
+          raise @@ Formula.Bug (Invalid_free (var, formula), pos)
       | e -> raise e)
   | _, args -> Func_call.func_call args func formula lhs_opt

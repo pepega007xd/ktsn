@@ -32,7 +32,11 @@ type bug_type =
   | Invalid_deref of var * t
   | Invalid_free of var * t
 
-exception Bug of bug_type
+exception Bug of bug_type * Filepath.position
+
+let report_bug (bug_type : bug_type) =
+  let pos, _ = Current_loc.get () in
+  raise @@ Bug (bug_type, pos)
 
 (* state stored by each CFG node in dataflow analysis *)
 type state = t list
@@ -266,7 +270,7 @@ let get_spatial_atom_from_first_opt (src : var) (f : t) : atom option =
 let get_spatial_atom_from (src : var) (f : t) : atom =
   get_spatial_atom_from_opt src f |> function
   | Some atom -> atom
-  | None -> raise @@ Bug (Invalid_deref (src, f))
+  | None -> report_bug @@ Invalid_deref (src, f)
 
 let get_target_of_atom (field : Types.field_type) (atom : atom) : var =
   match (atom, field) with

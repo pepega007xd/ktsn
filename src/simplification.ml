@@ -71,7 +71,7 @@ let remove_leaks (formula : Formula.t) : Formula.t =
     List.iter
       (fun atom ->
         if Formula.bound_of_atom true atom > 0 then
-          raise @@ Formula.Bug (Invalid_memtrack (atom, formula)))
+          Formula.report_bug (Invalid_memtrack (atom, formula)))
       junk_atoms;
     valid_atoms)
 

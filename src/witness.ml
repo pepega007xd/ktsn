@@ -1,4 +1,4 @@
-let write_witness (bug_type : Formula.bug_type) =
+let write_witness (bug_type : Formula.bug_type) (pos : Filepath.position) =
   let time = Unix.time () |> Unix.gmtime in
   let time =
     Printf.sprintf "%04d-%02d-%02dT%02d:%02d:%02dZ"
@@ -14,11 +14,11 @@ let write_witness (bug_type : Formula.bug_type) =
     | other -> Common.fail "unknown machdep: %s" other
   in
 
-  let filepath =
+  let filename, filepath =
     File.get_all () |> function
     | (File.NeedCPP (path, _, _, _) | File.NoCPP path | External (path, _)) :: _
       ->
-        Filepath.to_string_abs path
+        (Filepath.basename path, Filepath.to_string_abs path)
     | _ -> Common.fail "could not find filepath"
   in
 
@@ -39,7 +39,13 @@ let write_witness (bug_type : Formula.bug_type) =
   let oc = open_out "witness.yml" in
   Printf.fprintf oc
     "- content:\n\
-    \  - segment: []\n\
+    \  - segment: \n\
+    \    - waypoint:\n\
+    \        type: target\n\
+    \        action: 'follow'\n\
+    \        location:\n\
+    \          file_name: '%s'\n\
+    \          line: %i\n\
     \  entry_type: violation_sequence\n\
     \  metadata:\n\
     \    creation_time: '%s'\n\
@@ -56,5 +62,6 @@ let write_witness (bug_type : Formula.bug_type) =
     \      language: C\n\
     \      specification: %s\n\
     \    uuid: %s\n"
-    time data_model filepath hash filepath specification uuid;
+    filename pos.pos_lnum time data_model filepath hash filepath specification
+    uuid;
   close_out oc

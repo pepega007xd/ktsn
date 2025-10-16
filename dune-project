@@ -12,6 +12,7 @@
     astral
     sha
     uuidm
+    bitwuzla-cxx ; this will enable bitwuzla solver in astral
     (ppx_inline_test :build)
   )
 )

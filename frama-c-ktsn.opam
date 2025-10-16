@@ -9,6 +9,7 @@ depends: [
   "astral"
   "sha"
   "uuidm"
+  "bitwuzla-cxx"
   "ppx_inline_test" {build}
   "odoc" {with-doc}
 ]

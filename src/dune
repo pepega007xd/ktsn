@@ -4,7 +4,8 @@
       (:standard
         ; turn errors into warnings
         -warn-error -26 ; Unused var
-        -warn-error -27 ; Unused var strict
+        -warn-error -27 ; Unused var
+        -warn-error -32 ; Unused var
         -warn-error -33 ; Unused module open
         -g
       )

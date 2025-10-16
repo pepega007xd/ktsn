@@ -89,29 +89,33 @@ let unknown_condition_reached = ref false
 let doGuard _ (condition : exp) (state : t) : t guardaction * t guardaction =
   Async.yield ();
 
+  let formulas =
+    List.concat_map (fun formula -> Interpretation.eval formula condition) state
+  in
+
+  let false_f = [] |> Formula.add_distinct Formula.nil Formula.nil in
+
   let th, el =
-    match condition.enode with
-    | BinOp
-        ( operator,
-          { enode = Lval (Var lhs, NoOffset); _ },
-          { enode = Lval (Var rhs, NoOffset); _ },
-          _ ) -> (
-        let lhs = var lhs in
-        let rhs = var rhs in
-        let eq = List.map (Formula.add_eq lhs rhs) state in
-        let ne = List.map (Formula.add_distinct lhs rhs) state in
-        match operator with
-        | Eq -> (eq, ne)
-        | Ne -> (ne, eq)
+    List.map
+      (fun (formula, var) ->
+        match Cil.typeOf condition with
+        (* nondeterministic conditions *)
+        | _ when var = Formula.nondet -> (formula, formula)
+        (* pointer variable conditions *)
+        | typ when Types.is_relevant_type typ ->
+            ( Formula.add_distinct var Formula.nil formula,
+              Formula.add_eq var Formula.nil formula )
+        (* integer conditions *)
+        | _ when Formula.get_int_val_opt var formula |> Option.is_some ->
+            if Formula.get_int_val var formula = 0 then (false_f, formula)
+            else (formula, false_f) (* unknown conditions *)
         | _ ->
+            Common.warning "unknown condition reached: %a" Printer.pp_exp
+              condition;
             unknown_condition_reached := true;
-            (state, state))
-    (* nondeterministic conditions do not count as unknown *)
-    | Lval (Var var, NoOffset) when var.vname = Constants.nondet_var_name ->
-        (state, state)
-    | _ ->
-        unknown_condition_reached := true;
-        (state, state)
+            (formula, formula))
+      formulas
+    |> List.split
   in
   let th = List.filter Astral_query.check_sat th in
   let el = List.filter Astral_query.check_sat el in
@@ -206,6 +210,7 @@ let doEdge (prev_stmt : stmt) (next_stmt : stmt) (state : t) : t =
     state
     |> List.map (remove_ptos_from_vars end_of_scope_stack_vars)
     |> List.map (convert_vars_to_fresh end_of_scope_locals)
+    |> List.map remove_unused_int_vars
     |> List.map remove_leaks
     |> List.map reduce_equiv_classes
     |> List.map do_abstraction

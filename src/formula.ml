@@ -23,6 +23,7 @@ type atom =
   | LS of ls
   | DLS of dls
   | NLS of nls
+  | IntEq of var * int
 
 type t = atom list
 
@@ -42,6 +43,10 @@ let report_bug (bug_type : bug_type) =
 type state = t list
 
 let nil = SL.Variable.nil
+
+(* TODO: what sort? does it matter anywhere? *)
+let unknown = SL.Variable.mk "_unknown" Sort.loc_nil
+let nondet = SL.Variable.mk "_nondet" Sort.loc_nil
 
 (** Constructors *)
 
@@ -85,6 +90,7 @@ let atom_to_string : atom -> 'a =
   | NLS nls ->
       Format.sprintf "nls_%d+(%s,%s,%s)" nls.min_len (v nls.first) (v nls.top)
         (v nls.next)
+  | IntEq (var, value) -> Format.sprintf "%s = %i" (v var) value
 
 let pp_atom (fmt : Format.formatter) (atom : atom) =
   Format.fprintf fmt "%s" (atom_to_string atom)
@@ -133,7 +139,8 @@ let get_vars (f : t) : var list =
       | PointsTo (src, Generic vars) -> src :: List.map snd vars
       | LS ls -> [ ls.first; ls.next ]
       | DLS dls -> [ dls.first; dls.last; dls.prev; dls.next ]
-      | NLS nls -> [ nls.first; nls.top; nls.next ])
+      | NLS nls -> [ nls.first; nls.top; nls.next ]
+      | IntEq (var, _) -> [ var ])
     f
 
 let get_fresh_vars (f : t) : var list =
@@ -171,6 +178,7 @@ let subsitute_in_atom (old_var : var) (new_var : var) : atom -> atom =
           next = v nls.next;
           min_len = nls.min_len;
         }
+  | IntEq (lhs, value) -> IntEq (v lhs, value)
 
 let substitute (f : t) ~(var : var) ~(by : var) : t =
   List.map (subsitute_in_atom var by) f
@@ -303,7 +311,7 @@ let is_spatial_target (target : var) (f : t) : bool =
 let get_spatial_target (src : var) (field : Types.field_type) (f : t) : var =
   get_spatial_atom_from_opt src f |> function
   | Some var -> get_target_of_atom field var
-  | None -> raise @@ Invalid_deref (src, f)
+  | None -> report_bug @@ Invalid_deref (src, f)
 
 let get_spatial_target_opt (src : var) (field : Types.field_type) (f : t) :
     var option =
@@ -401,6 +409,22 @@ let add_distinct (lhs : var) (rhs : var) (f : t) : t =
   | _, Some f -> f
   | _ -> f |> add_atom (Distinct (lhs, rhs))
 
+(** Integers *)
+
+let get_int_val_opt (var : var) : t -> int option =
+  List.find_map (function
+    | IntEq (v, value) when var = v -> Some value
+    | _ -> None)
+
+let get_int_val (var : var) (f : t) : int = get_int_val_opt var f |> Option.get
+
+let update_int_eq (var : var) (value : int) (f : t) : t =
+  if get_int_val_opt var f |> Option.is_some then
+    List.map
+      (function IntEq (v, _) when var = v -> IntEq (v, value) | a -> a)
+      f
+  else f |> add_atom (IntEq (var, value))
+
 (** Materialization *)
 
 (** transforms [formula] so that [var] is a part of a points-to atom, not a list
@@ -478,6 +502,10 @@ let rec materialize (var : var) (f : t) : t list =
       (* length 0 cases *)
       :: (f |> add_eq nls.first nls.top |> materialize var)
   | _ -> assert false
+
+let materialize (var : var) (f : t) : t list =
+  if get_spatial_atom_from_opt var f |> Option.is_some then materialize var f
+  else [ f ]
 
 (** Miscellaneous *)
 

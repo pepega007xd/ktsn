@@ -126,6 +126,8 @@ let varinfo_to_var (varinfo : Cil_types.varinfo) : SL.Variable.t =
   | name when name = null_var_name -> SL.Variable.nil
   | name when name = const_var_name -> fail "_const in varinfo_to_var"
   | name when name = nondet_var_name -> fail "_nondet in varinfo_to_var"
+  | name when Ast_types.is_integral varinfo.vtype ->
+      SL.Variable.mk name Sort.int
   | _ when not @@ is_relevant_var varinfo ->
       (* TODO: return proper integer var *)
       fail "invalid type in varinfo_to_var: %a" Printer.pp_varinfo varinfo

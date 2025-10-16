@@ -48,6 +48,11 @@ let remove_irrelevant_vars (formula : Formula.t) : Formula.t =
       | _ -> true)
     formula
 
+let remove_unused_int_vars : Formula.t -> Formula.t =
+  List.filter (function
+    | Formula.IntEq (var, _) -> not @@ is_fresh_var var
+    | _ -> true)
+
 (** removes all spatial atoms where the source variable doesn't appear anywhere
     else in the formula *)
 let remove_leaks (formula : Formula.t) : Formula.t =

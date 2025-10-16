@@ -80,5 +80,8 @@ let convert (f : Formula.t) : SL.t =
                       SL_builtins.mk_pto_nls first ~top ~next:first_next;
                       SL_builtins.mk_ls first_next ~sink:next;
                     ]))
+    | IntEq (var, value) ->
+        SL.mk_eq2 (v var)
+          (SL.Term.mk_smt (SMT.of_const (Constant.mk_int value)))
   in
   SL.mk_star (List.map map_atom f)

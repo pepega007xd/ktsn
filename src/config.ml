@@ -81,8 +81,8 @@ module Astral_debug = Self.False (struct
   let help = "Print info about queries to Astral"
 end)
 
-module Benchmark_mode = Self.False (struct
-  let option_name = "-ktsn-benchmark-mode"
+module Svcomp_mode = Self.False (struct
+  let option_name = "-ktsn-svcomp-mode"
 
   let help =
     "SV-COMP exit functions are treated as exits, allocations are infallible"
@@ -98,4 +98,9 @@ end)
 module Catch_exceptions = Self.True (struct
   let option_name = "-ktsn-catch-exceptions"
   let help = "Catch exceptions in main function (disable for benchmarks)"
+end)
+
+module Print_version = Self.False (struct
+  let option_name = "-ktsn-version"
+  let help = "Print version and exit"
 end)

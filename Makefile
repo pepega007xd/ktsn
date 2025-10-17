@@ -35,10 +35,10 @@ ARGS := $(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
 
 run: build
 	ivette -scf -ulevel=3 $(FILE) -then-replace \
-	-ktsn -ktsn-msg-key '*' -ktsn-benchmark-mode $(ARGS)
+	-ktsn -ktsn-msg-key '*' -ktsn-svcomp-mode $(ARGS)
 
 run-direct: build
-	ivette -ktsn -ktsn-msg-key '*' -ktsn-benchmark-mode $(ARGS) $(FILE)
+	ivette -ktsn -ktsn-msg-key '*' -ktsn-svcomp-mode $(ARGS) $(FILE)
 
 build:
 	dune build && dune install
@@ -58,7 +58,5 @@ bp-archive: clean
 	cp excel_abstract/abstrakt.pdf bp-archive/excel_at_fit/abstract.pdf
 
 svcomp-archive: clean
-	rm -rf svcomp/_opam
-	scripts/pack.sh
-	mv _opam svcomp
+	utils/pack.sh
 	zip -r svcomp.zip svcomp

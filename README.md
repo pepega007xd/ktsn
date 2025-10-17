@@ -74,7 +74,7 @@ Results of the analysis displayed in Ivette (Frama-C GUI frontend):
 - `-ktsn-astral-debug` - Print debug info about queries to Astral
 - `-ktsn-astral-encoding <Bitvectors | Sets>` - Which location encoding should Astral use, default: Bitvectors
 - `-ktsn-backend-solver <Auto | Bitwuzla | CVC5 | Z3>` - Which solver should be used by Astral, default: Auto
-- `-ktsn-benchmark-mode` - Enables features needed to run benchmarks
+- `-ktsn-svcomp-mode` - Enables features needed to run SV-COMP benchmarks
 - `-ktsn-catch-exceptions` - Catch exceptions in main function (disable this for benchmarks) (set by default, opposite option is -ktsn-no-catch-exceptions)
 - `-ktsn-dump-queries` - Dump Astral queries to the `astral_queries` directory.
 - `-ktsn-edge-abstraction` - Do abstraction on every edge between statements (default: abstraction is done on loop return)

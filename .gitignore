@@ -9,3 +9,6 @@ bp/main.pdf
 bp/template.pdf
 excel_poster/main.pdf
 witness.yml
+svcomp/_opam
+results*
+svcomp.zip

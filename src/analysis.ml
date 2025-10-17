@@ -195,7 +195,7 @@ let doStmt (stmt : stmt) (_ : t) : t stmtaction =
       | None ->
           Hashtbl.add loop_cycles stmt (Config.Max_loop_cycles.get ());
           SDefault)
-  | Instr instr when Config.Benchmark_mode.get () -> (
+  | Instr instr when Config.Svcomp_mode.get () -> (
       match Instruction_type.get_instr_type instr with
       | Instruction_type.Call (_, fn, _) ->
           if List.mem fn.vname [ "reach_error"; "myexit"; "fail"; "exit" ] then

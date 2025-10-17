@@ -11,16 +11,19 @@ let init ~backend ~encoding ~dump_queries () =
   Freed.register ();
 
   let open SL_builtins in
-  let heap_sort = HeapSort.of_list [
-    (loc_ls, LS.struct_ls);
-    (loc_dls, DLS.struct_dls);
-    (loc_nls, NLS.struct_nls);
-  ] 
+  let heap_sort =
+    HeapSort.of_list
+      [
+        (loc_ls, LS.struct_ls);
+        (loc_dls, DLS.struct_dls);
+        (loc_nls, NLS.struct_nls);
+      ]
   in
-  Solver.init ~dump_queries ~backend ~encoding ~quantifier_encoding:`Direct ~use_builtin_defs:false ~source:Config.name ()
+  Solver.init ~dump_queries ~backend ~encoding ~quantifier_encoding:`Direct
+    ~use_builtin_defs:false ~source:"ktsn" ()
   |> Solver.add_heap_sort heap_sort
 
-let [@warning "-8"] convert f =
+let[@warning "-8"] convert f =
   let v = SL.Term.of_var in
   let map_atom = function
     | Eq vars -> SL.mk_eq (List.map v vars)
@@ -42,46 +45,40 @@ let [@warning "-8"] convert f =
         let ls_0 = SL_builtins.mk_ls first ~sink:next in
         let ls_1 = SL.mk_star [ ls_0; SL.mk_distinct2 first next ] in
         let ls_2 =
-            let n = SL.Term.mk_fresh_var "n" loc_ls in
-            (*SL.mk_exists' [loc_ls] (fun [n] ->*)
-            SL.mk_star [ 
-              SL_builtins.mk_pto_ls first ~next:n; 
-              SL.mk_predicate "ls" [n; next];
-              SL.mk_distinct [first; n; next];
-            ];
+          let n = SL.Term.mk_fresh_var "n" loc_ls in
+          (*SL.mk_exists' [loc_ls] (fun [n] ->*)
+          SL.mk_star
+            [
+              SL_builtins.mk_pto_ls first ~next:n;
+              SL.mk_predicate "ls" [ n; next ];
+              SL.mk_distinct [ first; n; next ];
+            ]
           (* ) *)
         in
-        match ls.min_len with
-        | 0 -> ls_0
-        | 1 -> ls_1
-        | _ -> ls_2)
+        match ls.min_len with 0 -> ls_0 | 1 -> ls_1 | _ -> ls_2)
     | DLS dls -> (
         let first = v dls.first in
         let last = v dls.last in
         let prev = v dls.prev in
         let next = v dls.next in
 
-        let dls_0 =
-          SL.mk_predicate "dls" [first; next; last; prev]
-        in
+        let dls_0 = SL.mk_predicate "dls" [ first; next; last; prev ] in
         let dls_1 = SL.mk_star [ dls_0; SL.mk_distinct2 first next ] in
-        let dls_2 =
-          SL.mk_star
-            [ dls_1; SL.mk_distinct2 first last ]
-        in
+        let dls_2 = SL.mk_star [ dls_1; SL.mk_distinct2 first last ] in
         let dls_3 =
           let n = SL.Term.mk_fresh_var "n" loc_dls in
           (*SL.mk_exists' [loc_dls] (fun [n] ->*)
-            SL.mk_star [ 
-              SL_builtins.mk_pto_dls first ~next:n ~prev; 
-              SL.mk_predicate "dls" [n; next; last; first];
+          SL.mk_star
+            [
+              SL_builtins.mk_pto_dls first ~next:n ~prev;
+              SL.mk_predicate "dls" [ n; next; last; first ];
               SL.mk_distinct2 n next;
               SL.mk_distinct2 last first;
               SL.mk_distinct2 first next;
-            ];
+            ]
           (* ) *)
         in
-                
+
         match dls.min_len with
         | 0 -> dls_0
         | 1 -> dls_1
@@ -97,18 +94,16 @@ let [@warning "-8"] convert f =
           let t = SL.Term.mk_fresh_var "t" loc_nls in
           let n = SL.Term.mk_fresh_var "n" loc_ls in
           (*SL.mk_exists' [loc_nls; loc_ls] (fun [t; n] ->*)
-            SL.mk_star [ 
-              SL_builtins.mk_pto_nls first ~top:t ~next:n; 
-              SL.mk_predicate "nls" [t; top; next];
-              SL.mk_predicate "ls" [n; next];
+          SL.mk_star
+            [
+              SL_builtins.mk_pto_nls first ~top:t ~next:n;
+              SL.mk_predicate "nls" [ t; top; next ];
+              SL.mk_predicate "ls" [ n; next ];
               SL.mk_distinct2 first next;
               SL.mk_distinct2 t next;
-            ];
+            ]
           (* ) *)
         in
-        match nls.min_len with
-        | 0 -> nls_0
-        | 1 -> nls_1
-        | _ -> nls_2)
+        match nls.min_len with 0 -> nls_0 | 1 -> nls_1 | _ -> nls_2)
   in
   SL.mk_star (List.map map_atom f)

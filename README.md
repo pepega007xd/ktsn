@@ -34,7 +34,7 @@ This installation guide was tested on Fedora 41 and Ubuntu 24.04, but it should 
 
 To run the analysis of a single program in the terminal, use:
 ```bash
-frama-c -sl <filename.c>
+frama-c -ktsn <filename.c>
 ```
 
 To run with the recommended settings in Ivette (Frama-C GUI), use:
@@ -70,18 +70,18 @@ Results of the analysis displayed in Ivette (Frama-C GUI frontend):
 
 ## Configuration options
 
-- `-sl` - Enable the analysis
-- `-sl-astral-debug` - Print debug info about queries to Astral
-- `-sl-astral-encoding <Bitvectors | Sets>` - Which location encoding should Astral use, default: Bitvectors
-- `-sl-backend-solver <Auto | Bitwuzla | CVC5 | Z3>` - Which solver should be used by Astral, default: Auto
-- `-sl-benchmark-mode` - Enables features needed to run benchmarks
-- `-sl-catch-exceptions` - Catch exceptions in main function (disable this for benchmarks) (set by default, opposite option is -sl-no-catch-exceptions)
-- `-sl-dump-queries` - Dump Astral queries to the `astral_queries` directory.
-- `-sl-edge-abstraction` - Do abstraction on every edge between statements (default: abstraction is done on loop return)
-- `-sl-edge-deduplication` - Deduplicate states on every edge between statements
-- `-sl-max-loop-cycles <N>` - If set, the analysis will traverse loops only `N` times
-- `-sl-print-sort` - Print sort of variables along with their names
-- `-sl-simple-join` - Compute join of states using entailment on single formulae (default: entailments of disjunctions are computed)
+- `-ktsn` - Enable the analysis
+- `-ktsn-astral-debug` - Print debug info about queries to Astral
+- `-ktsn-astral-encoding <Bitvectors | Sets>` - Which location encoding should Astral use, default: Bitvectors
+- `-ktsn-backend-solver <Auto | Bitwuzla | CVC5 | Z3>` - Which solver should be used by Astral, default: Auto
+- `-ktsn-benchmark-mode` - Enables features needed to run benchmarks
+- `-ktsn-catch-exceptions` - Catch exceptions in main function (disable this for benchmarks) (set by default, opposite option is -ktsn-no-catch-exceptions)
+- `-ktsn-dump-queries` - Dump Astral queries to the `astral_queries` directory.
+- `-ktsn-edge-abstraction` - Do abstraction on every edge between statements (default: abstraction is done on loop return)
+- `-ktsn-edge-deduplication` - Deduplicate states on every edge between statements
+- `-ktsn-max-loop-cycles <N>` - If set, the analysis will traverse loops only `N` times
+- `-ktsn-print-sort` - Print sort of variables along with their names
+- `-ktsn-simple-join` - Compute join of states using entailment on single formulae (default: entailments of disjunctions are computed)
 
 ## Repository structure
 

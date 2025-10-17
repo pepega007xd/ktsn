@@ -1,5 +1,5 @@
 (** This modules defines the categories of debug output that can be enabled with
-    [-sl-msg-key <category1,category2,...>], or [-sl-msg-key '*'] for all *)
+    [-ktsn-msg-key <category1,category2,...>], or [-ktsn-msg-key '*'] for all *)
 
 let do_instr = Config.Self.register_category "do_instr"
 let combine_predecessors = Config.Self.register_category "combine_predecessors"

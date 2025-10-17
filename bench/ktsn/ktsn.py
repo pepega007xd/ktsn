@@ -16,10 +16,10 @@ class Tool(benchexec.tools.template.BaseTool2):
         return "https://github.com/pepega007xd/ktsn"
 
     def get_direct_args(self, input_file):
-        return f"frama-c -sl -sl-benchmark-mode -sl-no-catch-exceptions {input_file}"
+        return f"frama-c -ktsn -ktsn-benchmark-mode -ktsn-no-catch-exceptions {input_file}"
 
     def get_args(self, input_file, ulevel):
-        return f"frama-c -scf -ulevel={ulevel} {input_file} -then-replace -sl -sl-benchmark-mode -sl-no-catch-exceptions"
+        return f"frama-c -scf -ulevel={ulevel} {input_file} -then-replace -ktsn -ktsn-benchmark-mode -ktsn-no-catch-exceptions"
 
     def cmdline(self, executable, options, task, rlimits):
         input_file = task.input_files[0]

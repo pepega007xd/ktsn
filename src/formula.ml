@@ -311,7 +311,7 @@ let is_spatial_target (target : var) (f : t) : bool =
 let get_spatial_target (src : var) (field : Types.field_type) (f : t) : var =
   get_spatial_atom_from_opt src f |> function
   | Some var -> get_target_of_atom field var
-  | None -> raise @@ Invalid_deref (src, f)
+  | None -> report_bug @@ Invalid_deref (src, f)
 
 let get_spatial_target_opt (src : var) (field : Types.field_type) (f : t) :
     var option =

@@ -95,25 +95,39 @@ let doGuard _ (condition : exp) (state : t) : t guardaction * t guardaction =
 
   let false_f = [] |> Formula.add_distinct Formula.nil Formula.nil in
 
+  let rel exp = Cil.typeOf exp |> Types.is_relevant_type in
   let th, el =
-    List.map
+    List.concat_map
       (fun (formula, var) ->
-        match Cil.typeOf condition with
+        match condition.enode with
         (* nondeterministic conditions *)
-        | _ when var = Formula.nondet -> (formula, formula)
+        | _ when var = Formula.nondet -> [ (formula, formula) ]
         (* pointer variable conditions *)
-        | typ when Types.is_relevant_type typ ->
-            ( Formula.add_distinct var Formula.nil formula,
-              Formula.add_eq var Formula.nil formula )
+        | _ when rel condition ->
+            [
+              ( Formula.add_distinct var Formula.nil formula,
+                Formula.add_eq var Formula.nil formula );
+            ]
         (* integer conditions *)
         | _ when Formula.get_int_val_opt var formula |> Option.is_some ->
-            if Formula.get_int_val var formula = 0 then (false_f, formula)
-            else (formula, false_f) (* unknown conditions *)
+            if Formula.get_int_val var formula = 0 then [ (false_f, formula) ]
+            else [ (formula, false_f) ] (* unknown conditions *)
+        (* pointer comparison conditions *)
+        | BinOp (((Eq | Ne) as op), lhs, rhs, _) when rel lhs && rel rhs ->
+            List.concat_map
+              (fun (formula, lhs) ->
+                List.map
+                  (fun (formula, rhs) ->
+                    let eq = Formula.add_eq lhs rhs formula in
+                    let ne = Formula.add_distinct lhs rhs formula in
+                    if op = Eq then (eq, ne) else (ne, eq))
+                  (Interpretation.eval formula rhs))
+              (Interpretation.eval formula lhs)
         | _ ->
             Common.warning "unknown condition reached: %a" Printer.pp_exp
               condition;
             unknown_condition_reached := true;
-            (formula, formula))
+            [ (formula, formula) ])
       formulas
     |> List.split
   in

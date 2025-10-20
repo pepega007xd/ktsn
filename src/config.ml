@@ -97,7 +97,9 @@ end)
 
 module Catch_exceptions = Self.True (struct
   let option_name = "-seal-catch-exceptions"
-  let help = "Catch exceptions in main function (disable for benchmarks)"
+
+  let help =
+    "Catch and print exceptions in main function (disable for benchmarks)"
 end)
 
 module Print_version = Self.False (struct

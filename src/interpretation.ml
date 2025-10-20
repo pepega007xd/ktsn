@@ -31,9 +31,7 @@ let eval_binop (op : binop) (lhs : Formula.var) (rhs : Formula.var)
       (Formula.update_int_eq fresh_var value formula, fresh_var)
   | _ -> (
       match op with
-      (* TODO: *)
-      | Eq -> (formula |> Formula.add_eq lhs rhs, fresh_var)
-      | Ne -> (Formula.add_distinct lhs rhs formula, fresh_var)
+      | Eq | Ne -> (formula, fresh_var)
       | _ -> fail "unsupported binop: %a" Printer.pp_binop op)
 
 let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
@@ -43,6 +41,13 @@ let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
     match exp.enode with
     | _ when Cil.typeOf exp |> Ast_types.is_ptr && Cil.is_nullptr exp ->
         [ (formula, Formula.nil) ]
+    | _ when Cil.constFoldToInt exp |> Option.is_some ->
+        let fresh_var = SL.Variable.mk_fresh "int" Sort.int in
+        let value = Cil.constFoldToInt exp |> Option.get |> Z.to_int in
+        [ (Formula.update_int_eq fresh_var value formula, fresh_var) ]
+    | CastE (typ, exp)
+      when Ast_types.is_ptr typ && Cil.typeOf exp |> Ast_types.is_ptr ->
+        eval_orig exp
     | BinOp (op, lhs, rhs, _) ->
         List.concat_map
           (fun (formula, lhs) ->
@@ -50,10 +55,6 @@ let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
               (fun (formula, rhs) -> eval_binop op lhs rhs formula)
               (eval formula rhs))
           (eval_orig lhs)
-    | _ when Cil.constFoldToInt exp |> Option.is_some ->
-        let fresh_var = SL.Variable.mk_fresh "int" Sort.int in
-        let value = Cil.constFoldToInt exp |> Option.get |> Z.to_int in
-        [ (Formula.update_int_eq fresh_var value formula, fresh_var) ]
     | Lval (Var v, NoOffset) -> [ (formula, var v) ]
     | Lval (Mem inner, NoOffset) ->
         List.map
@@ -105,7 +106,13 @@ let set_value (lhs : lval) (rhs : Formula.var) (formula : Formula.t) :
           (* assignment into non-pointer field *)
             else formula)
         (eval lhs)
-  (* var = expr; *)
+  (* var = expr; // integer var *)
+  | Var lhs, NoOffset when Ast_types.is_integral lhs.vtype -> (
+      let lhs = var lhs in
+      Formula.get_int_val_opt lhs formula |> function
+      | Some value -> [ Formula.update_int_eq lhs value formula ]
+      | None -> [ formula ])
+  (* var = expr; // pointer var *)
   | Var lhs, NoOffset -> [ Transfer.assign (var lhs) rhs formula ]
   | _ -> fail "invalid lval: %a" Printer.pp_lval lhs
 

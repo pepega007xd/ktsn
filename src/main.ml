@@ -44,19 +44,24 @@ let main () =
   Printexc.record_backtrace true;
 
   (* run the analysis and catch exceptions representing bug detections *)
-  (try run_analysis () with
-  | Formula.Bug _ when !Analysis.unknown_condition_reached ->
-      Self.result "Unknown_result"
-  | Formula.Bug (bug_type, pos) ->
-      if Config.Svcomp_mode.get () then Witness.write_witness bug_type pos;
-      (* print the type of detected bug *)
-      Self.result "%a" Formula.pp_bug_type bug_type
-  | e ->
-      if Config.Catch_exceptions.get () then (
-        let backtrace = Printexc.get_backtrace () in
-        Common.warning "EXCEPTION: %s" (Printexc.to_string e);
-        Common.warning "BACKTRACE: \n%s" backtrace)
-      else raise e);
+  (try run_analysis ()
+   with e -> (
+     if Config.Catch_exceptions.get () then (
+       let backtrace = Printexc.get_backtrace () in
+       (match e with
+       | Formula.Bug (bug_type, _) ->
+           Common.warning "EXCEPTION: %a" Formula.pp_bug_type bug_type
+       | _ -> Common.warning "EXCEPTION: %s" (Printexc.to_string e));
+       Common.warning "BACKTRACE: \n%s" backtrace);
+
+     match e with
+     | Formula.Bug _ when !Analysis.unknown_condition_reached ->
+         Self.result "Unknown_result"
+     | Formula.Bug (bug_type, pos) ->
+         if Config.Svcomp_mode.get () then Witness.write_witness bug_type pos;
+         (* print the type of detected bug *)
+         Self.result "%a" Formula.pp_bug_type bug_type
+     | e -> if not @@ Config.Catch_exceptions.get () then raise e));
 
   (* dump analysis results *)
   Solver.dump_stats (Option.get !solver);

@@ -7,16 +7,6 @@ open Constants
 (** This module implements multiple simple preprocessing passes, and serves as
     the entrypoint to preprocessing *)
 
-let remove_casts =
-  object
-    inherit nopCilVisitor
-
-    method! vexpr expr =
-      match expr.enode with
-      | CastE (_, inner) -> ChangeDoChildrenPost (inner, fun x -> x)
-      | _ -> DoChildren
-  end
-
 (** Converts variable initializations to simple assignments *)
 let remove_local_init =
   object
@@ -35,6 +25,25 @@ let remove_local_init =
               ChangeTo [ Call (Some lval, evar func, params, location) ]
           | _ -> fail "Unsupported instruction: %a" Printer.pp_instr instr)
       | _ -> SkipChildren
+  end
+
+let remove_not_operator =
+  object
+    inherit Visitor.frama_c_inplace
+
+    method! vexpr (exp : exp) =
+      match exp.enode with
+      | UnOp (LNot, exp, _) ->
+          let new_enode =
+            match exp.enode with
+            | UnOp (LNot, { enode; _ }, _) -> enode
+            | BinOp (Eq, lhs, rhs, typ) -> BinOp (Ne, lhs, rhs, typ)
+            | BinOp (Ne, lhs, rhs, typ) -> BinOp (Eq, lhs, rhs, typ)
+            | other -> other
+          in
+          let exp = new_exp ~loc:exp.eloc new_enode in
+          ChangeDoChildrenPost (exp, Fun.id)
+      | _ -> DoChildren
   end
 
 let remove_noop_assignments =
@@ -112,8 +121,8 @@ let preprocess () =
 
   Visitor.visitFramacFileFunctions (unique_names functions) file;
   Visitor.visitFramacFileFunctions remove_const_conditions file;
-  (* visitCilFileFunctions remove_casts file; *)
   Visitor.visitFramacFileFunctions remove_local_init file;
+  Visitor.visitFramacFileFunctions remove_not_operator file;
   Visitor.visitFramacFileFunctions remove_noop_assignments file;
   Types.process_types file;
   Visitor.visitFramacFileFunctions collect_stack_allocated_vars file;

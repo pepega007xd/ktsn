@@ -431,6 +431,11 @@ let update_int_eq (var : var) (value : int) (f : t) : t =
     segment, multiple formulas can be produced, representing different lengths
     of [ls] (1, 2+) *)
 let rec materialize (var : var) (f : t) : t list =
+  if get_spatial_atom_from_opt var f |> Option.is_some then
+    materialize_inner var f
+  else [ f ]
+
+and materialize_inner (var : var) (f : t) : t list =
   let fresh_var = mk_fresh_var_from var in
   let f = make_var_explicit_src var f in
   let old_atom = get_spatial_atom_from var f in
@@ -502,10 +507,6 @@ let rec materialize (var : var) (f : t) : t list =
       (* length 0 cases *)
       :: (f |> add_eq nls.first nls.top |> materialize var)
   | _ -> assert false
-
-let materialize (var : var) (f : t) : t list =
-  if get_spatial_atom_from_opt var f |> Option.is_some then materialize var f
-  else [ f ]
 
 (** Miscellaneous *)
 

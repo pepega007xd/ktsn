@@ -7,7 +7,7 @@ let init ~backend ~encoding ~dump_queries () =
   Astral.NLS.register ();
   Astral.Freed.register ();
   Solver.init ~dump_queries ~backend ~encoding ~use_builtin_defs:true
-    ~source:"ktsn" ()
+    ~source:"seal" ()
 
 let convert (f : Formula.t) : SL.t =
   let v = SL.Term.of_var in

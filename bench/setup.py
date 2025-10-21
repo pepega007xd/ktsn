@@ -2,6 +2,6 @@
 
 from distutils.core import setup
 
-setup(name='ktsn',
-      packages=['ktsn'],
+setup(name='seal',
+      packages=['seal'],
       )

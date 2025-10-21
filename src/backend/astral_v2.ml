@@ -20,7 +20,7 @@ let init ~backend ~encoding ~dump_queries () =
       ]
   in
   Solver.init ~dump_queries ~backend ~encoding ~quantifier_encoding:`Direct
-    ~use_builtin_defs:false ~source:"ktsn" ()
+    ~use_builtin_defs:false ~source:"seal" ()
   |> Solver.add_heap_sort heap_sort
 
 let[@warning "-8"] convert f =

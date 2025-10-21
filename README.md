@@ -1,6 +1,6 @@
-# KTSN Static Analyzer
+# SEAL Static Analyzer
 
-KTSN is a static analyzer for C programs built in OCaml. The tool is built to detect memory safety bugs and to verify the correctness of programs that work with linked lists. The analysis method is based on dataflow analysis with separation logic as the abstract domain.
+SEAL is a static analyzer for C programs built in OCaml. The tool is built to detect memory safety bugs and to verify the correctness of programs that work with linked lists. The analysis method is based on dataflow analysis with separation logic as the abstract domain.
 
 ## Installation
 
@@ -23,7 +23,7 @@ This installation guide was tested on Fedora 41 and Ubuntu 24.04, but it should 
   opam install .
   ```
 
-- Build and install KTSN. Inside this repository, run:
+- Build and install SEAL. Inside this repository, run:
 
   ```bash
   dune build
@@ -34,7 +34,7 @@ This installation guide was tested on Fedora 41 and Ubuntu 24.04, but it should 
 
 To run the analysis of a single program in the terminal, use:
 ```bash
-frama-c -ktsn <filename.c>
+frama-c -seal <filename.c>
 ```
 
 To run with the recommended settings in Ivette (Frama-C GUI), use:
@@ -70,28 +70,28 @@ Results of the analysis displayed in Ivette (Frama-C GUI frontend):
 
 ## Configuration options
 
-- `-ktsn` - Enable the analysis
-- `-ktsn-astral-debug` - Print debug info about queries to Astral
-- `-ktsn-astral-encoding <Bitvectors | Sets>` - Which location encoding should Astral use, default: Bitvectors
-- `-ktsn-backend-solver <Auto | Bitwuzla | CVC5 | Z3>` - Which solver should be used by Astral, default: Auto
-- `-ktsn-svcomp-mode` - Enables features needed to run SV-COMP benchmarks
-- `-ktsn-catch-exceptions` - Catch exceptions in main function (disable this for benchmarks) (set by default, opposite option is -ktsn-no-catch-exceptions)
-- `-ktsn-dump-queries` - Dump Astral queries to the `astral_queries` directory.
-- `-ktsn-edge-abstraction` - Do abstraction on every edge between statements (default: abstraction is done on loop return)
-- `-ktsn-edge-deduplication` - Deduplicate states on every edge between statements
-- `-ktsn-max-loop-cycles <N>` - If set, the analysis will traverse loops only `N` times
-- `-ktsn-print-sort` - Print sort of variables along with their names
-- `-ktsn-simple-join` - Compute join of states using entailment on single formulae (default: entailments of disjunctions are computed)
+- `-seal` - Enable the analysis
+- `-seal-astral-debug` - Print debug info about queries to Astral
+- `-seal-astral-encoding <Bitvectors | Sets>` - Which location encoding should Astral use, default: Bitvectors
+- `-seal-backend-solver <Auto | Bitwuzla | CVC5 | Z3>` - Which solver should be used by Astral, default: Auto
+- `-seal-svcomp-mode` - Enables features needed to run SV-COMP benchmarks
+- `-seal-catch-exceptions` - Catch exceptions in main function (disable this for benchmarks) (set by default, opposite option is -seal-no-catch-exceptions)
+- `-seal-dump-queries` - Dump Astral queries to the `astral_queries` directory.
+- `-seal-edge-abstraction` - Do abstraction on every edge between statements (default: abstraction is done on loop return)
+- `-seal-edge-deduplication` - Deduplicate states on every edge between statements
+- `-seal-max-loop-cycles <N>` - If set, the analysis will traverse loops only `N` times
+- `-seal-print-sort` - Print sort of variables along with their names
+- `-seal-simple-join` - Compute join of states using entailment on single formulae (default: entailments of disjunctions are computed)
 
 ## Repository structure
 
 ```
 ├── bench -- files for running Benchexec benchmarks
-│   ├── ktsn -- Benchexec tool definition for KTSN
+│   ├── seal -- Benchexec tool definition for SEAL
 │   │   ├── __init__.py
-│   │   └── ktsn.py
-│   ├── ktsn-results.xml -- Description for rendering HTML results
-│   ├── ktsn.xml -- Definition of SV-COMP and custom benchmarks
+│   │   └── seal.py
+│   ├── seal-results.xml -- Description for rendering HTML results
+│   ├── seal.xml -- Definition of SV-COMP and custom benchmarks
 │   └── setup.py
 ├── bp -- Typst source files and assets for the thesis
 │   ├── ...

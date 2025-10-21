@@ -10,18 +10,18 @@ class Tool(benchexec.tools.template.BaseTool2):
         return "0.1"
 
     def name(self):
-        return "KTSN"
+        return "SEAL"
 
     def project_url(self):
-        return "https://github.com/pepega007xd/ktsn"
+        return "https://github.com/pepega007xd/seal"
 
     def get_direct_args(self, input_file):
-        return f"frama-c -ktsn -ktsn-svcomp-mode \
-        -ktsn-no-catch-exceptions {input_file}"
+        return f"frama-c -seal -seal-svcomp-mode \
+        -seal-no-catch-exceptions {input_file}"
 
     def get_args(self, input_file, ulevel):
         return f"frama-c -scf -ulevel={ulevel} {input_file} -then-replace \
-        -ktsn -ktsn-svcomp-mode -ktsn-no-catch-exceptions"
+        -seal -seal-svcomp-mode -seal-no-catch-exceptions"
 
     def cmdline(self, executable, options, task, rlimits):
         input_file = task.input_files[0]

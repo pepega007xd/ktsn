@@ -5,21 +5,21 @@ benchmark: build
 	pip install bench/
 	rm -rf results/*
 	systemd-run --user --scope --slice=benchexec -p Delegate=yes \
-		benchexec bench/ktsn.xml --numOfThreads 8
+		benchexec bench/seal.xml --numOfThreads 8
 
 RESULTS_DIR := $(or $(word 2,$(MAKECMDGOALS)),results)
 
 verifit:
 	rm -rf $(RESULTS_DIR)
-	rsync -avz verifit:ktsn/$(RESULTS_DIR) .
+	rsync -avz verifit:seal/$(RESULTS_DIR) .
 	$(MAKE) results $(RESULTS_DIR)
 
 
 results:
 	pip install bench/
-	table-generator -x bench/ktsn-results.xml -o $(RESULTS_DIR) $(RESULTS_DIR)/*.xml.bz2
+	table-generator -x bench/seal-results.xml -o $(RESULTS_DIR) $(RESULTS_DIR)/*.xml.bz2
 	python3 -m http.server -b 127.0.0.1 8000 -d .. | \
-	firefox "localhost:8000/ktsn/$(RESULTS_DIR)"
+	firefox "localhost:8000/seal/$(RESULTS_DIR)"
 
 ALLARGS := $(wordlist 2, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
 ARGS_WITH_SUFFIX := $(addsuffix /*.xml.bz2, $(ALLARGS))
@@ -28,17 +28,17 @@ results-diff:
 	rm -rf results-diff/*
 	table-generator $(ARGS_WITH_SUFFIX) -o results-diff
 	python3 -m http.server -b 127.0.0.1 8000 -d .. | \
-	firefox 'localhost:8000/ktsn/results-diff'
+	firefox 'localhost:8000/seal/results-diff'
 
 FILE := $(word 2, $(MAKECMDGOALS))
 ARGS := $(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
 
 run: build
 	ivette -scf -ulevel=3 $(FILE) -then-replace \
-	-ktsn -ktsn-msg-key '*' -ktsn-svcomp-mode $(ARGS)
+	-seal -seal-msg-key '*' -seal-svcomp-mode $(ARGS)
 
 run-direct: build
-	ivette -ktsn -ktsn-msg-key '*' -ktsn-svcomp-mode $(ARGS) $(FILE)
+	ivette -seal -seal-msg-key '*' -seal-svcomp-mode $(ARGS) $(FILE)
 
 build:
 	dune build && dune install
@@ -47,7 +47,7 @@ build:
 	@:
 
 clean:
-	rm -rf _build bp/main.pdf bp/template.pdf bp-archive bench/ktsn.egg-info bench/build
+	rm -rf _build bp/main.pdf bp/template.pdf bp-archive bench/seal.egg-info bench/build
 
 bp-archive: clean
 	mkdir bp-archive

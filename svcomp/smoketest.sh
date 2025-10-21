@@ -2,7 +2,7 @@
 
 # Correct program verification
 
-output=$(python3 ktsn-entrypoint.py correct.c)
+output=$(python3 seal-entrypoint.py correct.c)
 status=$?
 
 if [ $status -ne 0 ]; then
@@ -18,7 +18,7 @@ fi
 
 # Bug detection
 
-output=$(python3 ktsn-entrypoint.py invalid_deref.c)
+output=$(python3 seal-entrypoint.py invalid_deref.c)
 status=$?
 
 if [ $status -ne 0 ]; then

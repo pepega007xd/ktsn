@@ -15,8 +15,8 @@
 (include_subdirs unqualified)
 
 (library
-  (name ktsn)
-  (public_name frama-c-ktsn.core)
+  (name seal)
+  (public_name frama-c-seal.core)
   (modules :standard)
   (flags
     :standard
@@ -43,7 +43,7 @@
 )
 
 (plugin
-  (name ktsn)
-  (libraries frama-c-ktsn.core)
+  (name seal)
+  (libraries frama-c-seal.core)
   (site (frama-c plugins))
 )

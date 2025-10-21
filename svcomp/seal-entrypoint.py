@@ -14,16 +14,16 @@ FRAMAC_BIN = os.path.join(SELF, "_opam/bin/frama-c")
 
 
 def print_version():
-    cmd = [FRAMAC_BIN, "-ktsn-version"]
+    cmd = [FRAMAC_BIN, "-seal-version"]
     run(cmd)
 
 
-def run_ktsn(source_files, options):
+def run_seal(source_files, options):
     cmd = [
         FRAMAC_BIN,
-        "-ktsn",
-        "-ktsn-svcomp-mode",
-        "-ktsn-no-catch-exceptions",
+        "-seal",
+        "-seal-svcomp-mode",
+        "-seal-no-catch-exceptions",
         *options,
         *source_files,
     ]
@@ -65,5 +65,5 @@ if __name__ == "__main__":
         exit(0)
     else:
         sources, options = get_sources()
-        res = run_ktsn(sources, options)
+        res = run_seal(sources, options)
         exit(res)

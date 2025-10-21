@@ -6,7 +6,7 @@ open Dataflow2
 (** This module contains the implementation of the dataflow analysis, this
     module implements the [Dataflow2.ForwardsTransfer] interface *)
 
-let name = "ktsn"
+let name = "seal"
 let debug = false
 
 type t = Formula.state

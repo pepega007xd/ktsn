@@ -1,13 +1,13 @@
-# KTSN static analyzer
+# SEAL static analyzer
 
-This is a submission of the KTSN static analyzer for SV-COMP 2026.
+This is a submission of the SEAL static analyzer for SV-COMP 2026.
 
 ## Usage
 
 Analysis of a program is done using the entrypoint script:
 
 ```sh
-./ktsn-entrypoint.py source.c
+./seal-entrypoint.py source.c
 ```
 
 ## Archive structure
@@ -15,14 +15,14 @@ Analysis of a program is done using the entrypoint script:
 ```
 svcomp
 ├── correct.c, invalid_deref.c	- simple C programs to test the analyzer, used by smoketest.sh
-├── ktsn-entrypoint.py		- wrapper script for the analyzer
-├── LICENSE			- MIT license for KTSN
-├── smoketest.sh		- script that tests basic functionality of KTSN
+├── seal-entrypoint.py		- wrapper script for the analyzer
+├── LICENSE			- MIT license for SEAL
+├── smoketest.sh		- script that tests basic functionality of SEAL
 └── _opam			- repository of OPAM packages, includes Frama-C and the analyzer itself
 ```
 
 ## License
 
-KTSN itself is licensed under the MIT license.
+SEAL itself is licensed under the MIT license.
 
 Licenses for its dependencies are available in `_opam/doc/<package_name>`

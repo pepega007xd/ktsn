@@ -51,7 +51,7 @@ let write_witness (bug_type : Formula.bug_type) (pos : Filepath.position) =
     \    creation_time: '%s'\n\
     \    format_version: '2.0'\n\
     \    producer:\n\
-    \      name: KTSN\n\
+    \      name: SEAL\n\
     \      version: '0.1'\n\
     \    task:\n\
     \      data_model: %s\n\

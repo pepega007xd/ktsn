@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-KTSN_DIR=$(realpath .)
+SEAL_DIR=$(realpath .)
 SWITCH="ocaml-variants.5.4.0+options ocaml-option-flambda"
 
 # Cleanup
@@ -10,8 +10,8 @@ rm -rf /tmp/_opam
 cd /tmp
 opam switch create . $SWITCH
 
-## Install KTSN
-opam install -y --working-dir "$KTSN_DIR"
+## Install SEAL
+opam install -y --working-dir "$SEAL_DIR"
 
 
 ## Prune switch
@@ -91,4 +91,4 @@ find _opam -type f -name '*.so' -exec strip --strip-unneeded {} +
 find _opam -type f -name '*.cmxs' -exec strip --strip-unneeded {} +
 strip --strip-unneeded _opam/bin/frama-c
 
-mv /tmp/_opam "$KTSN_DIR/svcomp"
+mv /tmp/_opam "$SEAL_DIR/svcomp"

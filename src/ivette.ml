@@ -51,16 +51,16 @@ let print_type_heuristic_on_field (fmt : Format.formatter)
   Option.iter (Format.pp_print_string fmt) result
 
 let () =
-  Server.Kernel_ast.Information.register ~id:"ktsn.stmt_state" ~label:"state"
+  Server.Kernel_ast.Information.register ~id:"seal.stmt_state" ~label:"state"
     ~title:"final state" ~descr:"final state reached for this statement"
     print_state;
 
-  Server.Kernel_ast.Information.register ~id:"ktsn.type_heuristic"
+  Server.Kernel_ast.Information.register ~id:"seal.type_heuristic"
     ~label:"type heurisic" ~title:"type heuristic"
     ~descr:"result of type heurisitic (which list type is this?)"
     print_type_heuristic;
 
-  Server.Kernel_ast.Information.register ~id:"ktsn.field_type_heuristic"
+  Server.Kernel_ast.Information.register ~id:"seal.field_type_heuristic"
     ~label:"field type heurisic" ~title:"field type heuristic"
     ~descr:"result of field type heurisitic (which list field type is this?)"
     print_type_heuristic_on_field

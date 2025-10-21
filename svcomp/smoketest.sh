@@ -1,5 +1,7 @@
 #!/usr/bin/sh
 
+cd $(dirname "$0")
+
 # Correct program verification
 
 output=$(python3 seal-entrypoint.py correct.c)

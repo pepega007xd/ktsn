@@ -47,7 +47,7 @@ build:
 	@:
 
 clean:
-	rm -rf _build bp/main.pdf bp/template.pdf bp-archive bench/seal.egg-info bench/build
+	rm -rf _build bp/main.pdf bp/template.pdf bp-archive bench/seal.egg-info bench/build svcomp.zip
 
 bp-archive: clean
 	mkdir bp-archive

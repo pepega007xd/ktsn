@@ -6,7 +6,7 @@ let var = Types.varinfo_to_var
 
 let eval_binop (op : binop) (lhs : Formula.var) (rhs : Formula.var)
     (formula : Formula.t) : Formula.t * Formula.var =
-  let fresh_var = SL.Variable.mk_fresh "exp" Sort.int in
+  let fresh_var = SL.Variable.mk_fresh "exp" Formula.int_sort in
   match
     (Formula.get_int_val_opt lhs formula, Formula.get_int_val_opt rhs formula)
   with
@@ -32,63 +32,73 @@ let eval_binop (op : binop) (lhs : Formula.var) (rhs : Formula.var)
   | _ -> (
       match op with
       | Eq | Ne -> (formula, fresh_var)
+      | PlusA | MinusA | Mult | Div | Mod | Shiftlt | Shiftrt | Lt | Gt | Le
+      | Ge ->
+          (formula, Formula.unknown)
       | _ -> fail "unsupported binop: %a" Printer.pp_binop op)
 
 let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
     =
   let eval_orig = eval formula in
-  let results =
-    match exp.enode with
-    | _ when Cil.typeOf exp |> Ast_types.is_ptr && Cil.is_nullptr exp ->
-        [ (formula, Formula.nil) ]
-    | _ when Cil.constFoldToInt exp |> Option.is_some ->
-        let fresh_var = SL.Variable.mk_fresh "int" Sort.int in
-        let value = Cil.constFoldToInt exp |> Option.get |> Z.to_int in
-        [ (Formula.update_int_eq fresh_var value formula, fresh_var) ]
-    | CastE (typ, exp)
-      when Ast_types.is_ptr typ && Cil.typeOf exp |> Ast_types.is_ptr ->
-        eval_orig exp
-    | BinOp (op, lhs, rhs, _) ->
-        List.concat_map
-          (fun (formula, lhs) ->
-            List.map
-              (fun (formula, rhs) -> eval_binop op lhs rhs formula)
-              (eval formula rhs))
-          (eval_orig lhs)
-    | Lval (Var v, NoOffset) -> [ (formula, var v) ]
-    | Lval (Mem inner, NoOffset) ->
-        List.map
-          (fun (formula, var) ->
+
+  let eval_and_materialize (exp : exp)
+      (fn : Formula.t * Formula.var -> Formula.t * Formula.var) :
+      (Formula.t * Formula.var) list =
+    let inputs = eval_orig exp in
+    let materialized =
+      List.concat_map
+        (fun (formula, var) ->
+          Formula.materialize var formula |> List.map (fun f -> (f, var)))
+        inputs
+    in
+    List.map fn materialized
+  in
+
+  match exp.enode with
+  | _ when Cil.typeOf exp |> Ast_types.is_ptr && Cil.is_nullptr exp ->
+      [ (formula, Formula.nil) ]
+  | _ when Cil.constFoldToInt exp |> Option.is_some ->
+      let fresh_var = SL.Variable.mk_fresh "int" Formula.int_sort in
+      let value = Cil.constFoldToInt exp |> Option.get |> Z.to_int in
+      [ (Formula.update_int_eq fresh_var value formula, fresh_var) ]
+  | Const _ -> [ (formula, Formula.unknown) ]
+  | CastE (typ, exp)
+    when Ast_types.is_ptr typ && Cil.typeOf exp |> Ast_types.is_ptr ->
+      eval_orig exp
+  | BinOp (op, lhs, rhs, _) ->
+      List.concat_map
+        (fun (formula, lhs) ->
+          List.map
+            (fun (formula, rhs) -> eval_binop op lhs rhs formula)
+            (eval formula rhs))
+        (eval_orig lhs)
+  | Lval (Var v, NoOffset) -> [ (formula, var v) ]
+  | Lval (Mem inner, NoOffset) ->
+      eval_and_materialize inner (fun (formula, var) ->
+          let var =
+            (Formula.get_spatial_target var (Other Constants.ptr_field_name))
+              formula
+          in
+          (formula, var))
+  | Lval (Mem inner, Field (field, NoOffset)) ->
+      eval_and_materialize inner (fun (formula, var) ->
+          if Types.is_relevant_type field.ftype then
             let var =
-              (Formula.get_spatial_target var (Other Constants.ptr_field_name))
+              Formula.get_spatial_target var
+                (Types.get_field_type field)
                 formula
             in
-            (formula, var))
-          (eval_orig inner)
-    | Lval (Mem inner, Field (field, NoOffset)) ->
-        List.map
-          (fun (formula, var) ->
-            if Types.is_relevant_type field.ftype then
-              let var =
-                Formula.get_spatial_target var
-                  (Types.get_field_type field)
-                  formula
-              in
-              (formula, var)
-            (* reading from non-pointer field *)
-              else (formula, Formula.unknown))
-          (eval_orig inner)
-    | _ -> fail "unsupported expr: %a" Printer.pp_exp exp
-  in
-  (* caller doesn't have to materialize [var] *)
-  List.concat_map
-    (fun (formula, var) ->
-      Formula.materialize var formula |> List.map (fun f -> (f, var)))
-    results
+            (formula, var)
+          (* reading from non-pointer field *)
+            else (
+            Formula.assert_allocated var formula;
+            (formula, Formula.unknown)))
+  | _ -> fail "unsupported expr: %a" Printer.pp_exp exp
 
 let set_value (lhs : lval) (rhs : Formula.var) (formula : Formula.t) :
     Formula.t list =
   let eval = eval formula in
+
   match lhs with
   (* *expr = expr; *)
   | Mem lhs, NoOffset ->
@@ -106,14 +116,18 @@ let set_value (lhs : lval) (rhs : Formula.var) (formula : Formula.t) :
           (* assignment into non-pointer field *)
             else formula)
         (eval lhs)
-  (* var = expr; // integer var *)
-  | Var lhs, NoOffset when Ast_types.is_integral lhs.vtype -> (
+  (* var = expr; *)
+  | Var lhs, NoOffset ->
       let lhs = var lhs in
-      Formula.get_int_val_opt lhs formula |> function
-      | Some value -> [ Formula.update_int_eq lhs value formula ]
-      | None -> [ formula ])
-  (* var = expr; // pointer var *)
-  | Var lhs, NoOffset -> [ Transfer.assign (var lhs) rhs formula ]
+      let int_value = Formula.get_int_val_opt lhs formula in
+      let result =
+        match int_value with
+        | Some value -> Formula.update_int_eq lhs value formula
+        | _ when rhs = Formula.unknown -> formula
+        | _ when lhs = rhs -> formula
+        | _ -> Transfer.assign lhs rhs formula
+      in
+      [ result ]
   | _ -> fail "invalid lval: %a" Printer.pp_lval lhs
 
 (* formula and a list of func arguments *)
@@ -156,7 +170,7 @@ let interpret_instr (instr : instr) (formula : Formula.t) : Formula.t list =
         List.concat_map
           (fun (formula, args) ->
             let formulas, return_vars =
-              Transfer.call lhs_sort func args formula
+              Transfer.call lhs_sort func (List.rev args) formula
             in
             List.combine formulas return_vars)
           inputs

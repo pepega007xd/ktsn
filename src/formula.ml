@@ -43,10 +43,11 @@ let report_bug (bug_type : bug_type) =
 type state = t list
 
 let nil = SL.Variable.nil
+let int_sort = Sort.mk_bitvector 32
 
 (* TODO: what sort? does it matter anywhere? *)
 let unknown = SL.Variable.mk "_unknown" Sort.loc_nil
-let nondet = SL.Variable.mk "_nondet" Sort.loc_nil
+let nondet = SL.Variable.mk "_nondet" int_sort
 
 (** Constructors *)
 
@@ -431,11 +432,6 @@ let update_int_eq (var : var) (value : int) (f : t) : t =
     segment, multiple formulas can be produced, representing different lengths
     of [ls] (1, 2+) *)
 let rec materialize (var : var) (f : t) : t list =
-  if get_spatial_atom_from_opt var f |> Option.is_some then
-    materialize_inner var f
-  else [ f ]
-
-and materialize_inner (var : var) (f : t) : t list =
   let fresh_var = mk_fresh_var_from var in
   let f = make_var_explicit_src var f in
   let old_atom = get_spatial_atom_from var f in

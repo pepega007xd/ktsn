@@ -2,13 +2,19 @@
 
 This is a submission of the SEAL static analyzer for SV-COMP 2026.
 
+The analyser is implemented as a plugin of the [Frama-C](https://frama-c.com/) platform
+and its source code is available at [github](https://github.com/pepega007xd/seal).
+
 ## Usage
 
 Analysis of a program is done using the entrypoint script:
 
 ```sh
-./seal-entrypoint.py source.c
+./seal-entrypoint.py [-machdep=x86_32|x86_64] source.c
 ```
+The `machdep` option specifies the target architecture, with values corresponding
+to ILP_32 and LP64 as used in SV-COMP, respectively.
+
 
 ## Archive structure
 
@@ -18,11 +24,14 @@ svcomp
 ├── seal-entrypoint.py		- wrapper script for the analyzer
 ├── LICENSE			- MIT license for SEAL
 ├── smoketest.sh		- script that tests basic functionality of SEAL
-└── _opam			- repository of OPAM packages, includes Frama-C and the analyzer itself
+├── _opam/bin/frama-c		- Frama-C binary
+├── _opam/lib 			- dynamically-linked libraries required by Frama-c and its plugins
+└── _opam/share			- models used by Frama-C
+
 ```
 
 ## License
 
 SEAL itself is licensed under the MIT license.
 
-Licenses for its dependencies are available in `_opam/doc/<package_name>`
+Licenses for Frama-C and its dynamic dependencies are available in `_opam/doc/<package_name>`.

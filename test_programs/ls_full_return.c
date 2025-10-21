@@ -12,8 +12,8 @@ SLL *construct_list() {
     }
 
     SLL *s = start;
-    int nondeterministic;
-    while (nondeterministic) {
+    int __VERIFIER_nondet_int();
+    while (__VERIFIER_nondet_int()) {
         s->next = malloc(1);
         if (s->next == NULL) {
             break;

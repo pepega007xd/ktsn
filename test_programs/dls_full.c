@@ -7,8 +7,8 @@ typedef struct DLL {
 } DLL;
 
 void construct_list(DLL *s) {
-    int nondeterministic;
-    while (nondeterministic) {
+    int __VERIFIER_nondet_int();
+    while (__VERIFIER_nondet_int()) {
         DLL *next = malloc(1);
         if (next == NULL) {
             s->next = NULL;

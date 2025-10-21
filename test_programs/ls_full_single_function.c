@@ -16,8 +16,8 @@ int main() {
         List *list = start;
         list->next = NULL;
 
-        int nondeterministic;
-        while (nondeterministic) {
+        int __VERIFIER_nondet_int();
+        while (__VERIFIER_nondet_int()) {
             List *next = malloc(sizeof(List));
             if (next == NULL)
                 return 1;

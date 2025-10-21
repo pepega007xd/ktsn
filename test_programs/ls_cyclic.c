@@ -13,8 +13,8 @@ SLL *construct_list() {
 
     SLL *node = start;
 
-    int nondeterministic;
-    while (nondeterministic) {
+    int __VERIFIER_nondet_int();
+    while (__VERIFIER_nondet_int()) {
         node->next = malloc(1);
         if (node->next == NULL) {
             break;

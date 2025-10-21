@@ -12,8 +12,8 @@ typedef struct NL {
 } NL;
 
 void construct_list(NL *s) {
-    int nondeterministic;
-    while (nondeterministic) {
+    int __VERIFIER_nondet_int();
+    while (__VERIFIER_nondet_int()) {
         s->top = malloc(1);
         if (s->top == NULL) {
             return;

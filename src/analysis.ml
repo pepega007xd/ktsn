@@ -101,7 +101,8 @@ let doGuard _ (condition : exp) (state : t) : t guardaction * t guardaction =
       (fun (formula, var) ->
         match condition.enode with
         (* nondeterministic conditions *)
-        | _ when var = Formula.nondet -> [ (formula, formula) ]
+        | _ when Formula.is_eq var Formula.nondet formula ->
+            [ (formula, formula) ]
         (* pointer variable conditions *)
         | _ when rel condition ->
             [

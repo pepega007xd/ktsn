@@ -11,6 +11,7 @@ let assign (lhs : Formula.var) (rhs : Formula.var) (formula : Formula.t) :
 (** transfer function for [var = var->field;] *)
 let assign_rhs_field (lhs : Formula.var) (rhs : Formula.var)
     (rhs_field : Types.field_type) (formula : Formula.t) : Formula.t =
+  (* TODO: remove this func and other unused cases *)
   let rhs_target =
     Formula.get_spatial_target_opt rhs rhs_field formula |> function
     | Some rhs -> rhs

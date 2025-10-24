@@ -24,6 +24,7 @@ type atom =
   | DLS of dls
   | NLS of nls
   | IntEq of var * int
+  | Ref of var * var
 
 type t = atom list
 
@@ -71,16 +72,17 @@ let atom_to_string : atom -> 'a =
     else SL.Variable.show var
   in
   function
-  | Eq vars -> vars |> List.map v |> String.concat " = "
-  | Distinct (lhs, rhs) -> v lhs ^ " != " ^ v rhs
+  | Eq vars ->
+      vars |> List.map v |> String.concat " = " |> Format.sprintf "(%s)"
+  | Distinct (lhs, rhs) -> Format.sprintf "(%s != %s)" (v lhs) (v rhs)
   | Freed var -> "freed(" ^ v var ^ ")"
-  | PointsTo (src, LS_t next) -> v src ^ " -> " ^ v next
+  | PointsTo (src, LS_t next) -> Format.sprintf "(%s -> %s)" (v src) (v next)
   | PointsTo (src, DLS_t (next, prev)) ->
-      Format.sprintf "%s -> n:%s,p:%s" (v src) (v next) (v prev)
+      Format.sprintf "(%s -> n:%s,p:%s)" (v src) (v next) (v prev)
   | PointsTo (src, NLS_t (top, next)) ->
-      Format.sprintf "%s -> t:%s,n:%s" (v src) (v top) (v next)
+      Format.sprintf "(%s -> t:%s,n:%s)" (v src) (v top) (v next)
   | PointsTo (src, Generic vars) ->
-      Format.sprintf "%s -> {%s}" (v src)
+      Format.sprintf "(%s -> {%s})" (v src)
         (vars
         |> List.map (fun (name, var) -> Format.sprintf "%s:%s" name (v var))
         |> String.concat " ")
@@ -91,17 +93,14 @@ let atom_to_string : atom -> 'a =
   | NLS nls ->
       Format.sprintf "nls_%d+(%s,%s,%s)" nls.min_len (v nls.first) (v nls.top)
         (v nls.next)
-  | IntEq (var, value) -> Format.sprintf "%s = %i" (v var) value
+  | IntEq (var, value) -> Format.sprintf "(%s = %i)" (v var) value
+  | Ref (src, target) -> Format.sprintf "ref(%s,%s)" (v src) (v target)
 
 let pp_atom (fmt : Format.formatter) (atom : atom) =
   Format.fprintf fmt "%s" (atom_to_string atom)
 
 let pp_formula (fmt : Format.formatter) (formula : t) =
-  let formula =
-    formula |> List.map atom_to_string
-    |> List.map (fun s -> "(" ^ s ^ ")")
-    |> String.concat " * "
-  in
+  let formula = formula |> List.map atom_to_string |> String.concat " * " in
   if formula = "" then Format.fprintf fmt "emp"
   else Format.fprintf fmt "%s" formula
 
@@ -141,7 +140,8 @@ let get_vars (f : t) : var list =
       | LS ls -> [ ls.first; ls.next ]
       | DLS dls -> [ dls.first; dls.last; dls.prev; dls.next ]
       | NLS nls -> [ nls.first; nls.top; nls.next ]
-      | IntEq (var, _) -> [ var ])
+      | IntEq (var, _) -> [ var ]
+      | Ref (src, target) -> [ src; target ])
     f
 
 let get_fresh_vars (f : t) : var list =
@@ -180,6 +180,7 @@ let subsitute_in_atom (old_var : var) (new_var : var) : atom -> atom =
           min_len = nls.min_len;
         }
   | IntEq (lhs, value) -> IntEq (v lhs, value)
+  | Ref (src, target) -> Ref (v src, v target)
 
 let substitute (f : t) ~(var : var) ~(by : var) : t =
   List.map (subsitute_in_atom var by) f
@@ -410,6 +411,25 @@ let add_distinct (lhs : var) (rhs : var) (f : t) : t =
   | _, Some f -> f
   | _ -> f |> add_atom (Distinct (lhs, rhs))
 
+(** Stack pointers *)
+
+let get_ref_opt (var : var) : t -> var option =
+  List.find_map (function
+    | Ref (src, target) when var = src -> Some target
+    | _ -> None)
+
+let get_ref (src : var) (f : t) : var =
+  get_ref_opt src f |> function
+  | Some target -> target
+  | None -> report_bug @@ Invalid_deref (src, f)
+
+let update_ref (var : var) (target : var) (f : t) : t =
+  if get_ref_opt var f |> Option.is_some then
+    List.map
+      (function Ref (src, _) when var = src -> Ref (src, target) | a -> a)
+      f
+  else add_atom (Ref (var, target)) f
+
 (** Integers *)
 
 let get_int_val_opt (var : var) : t -> int option =
@@ -504,18 +524,21 @@ let rec materialize (var : var) (f : t) : t list =
       :: (f |> add_eq nls.first nls.top |> materialize var)
   | _ -> assert false
 
-(** Miscellaneous *)
+(** Reachability *)
 
-let rec split_by_reachability_from ((spatial, rest) : t * t) (var : var) : t * t
+let rec split_by_reachability_from ((spatial, rest) : t * t) (src : var) : t * t
     =
-  let rest = make_var_explicit_src var rest in
-  get_spatial_atom_from_opt var rest |> function
-  | Some atom ->
+  let rest = make_var_explicit_src src rest in
+  (get_spatial_atom_from_opt src rest, get_ref_opt src rest) |> function
+  | Some atom, _ ->
       let targets = get_targets_of_atom atom in
       List.fold_left split_by_reachability_from
         (atom :: spatial, remove_atom atom rest)
         targets
-  | None -> (spatial, rest)
+  | _, Some target ->
+      let atom = Ref (src, target) in
+      split_by_reachability_from (atom :: spatial, remove_atom atom rest) target
+  | _ -> (spatial, rest)
 
 (** Splits a formula into a reachable and an unreachable subformula by the
     reachability from a set of variables *)
@@ -550,6 +573,8 @@ let split_by_reachability (vars : var list) (f : t) : t * t =
     List.filter (fun atom -> not @@ List.mem atom reachable) rest
   in
   (reachable, unreachable)
+
+(** Miscellaneous *)
 
 (** Counts the occurrences of a variable in spatial atoms and equalities,
     [Distinct] and [Freed] atoms are ignored *)

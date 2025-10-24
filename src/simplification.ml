@@ -35,23 +35,19 @@ let reduce_equiv_classes (formula : Formula.t) : Formula.t =
   (* filter out equivalence classes reduced to <2 members *)
   |> List.filter (function Formula.Eq ([] | [ _ ]) -> false | _ -> true)
 
-let remove_irrelevant_vars (formula : Formula.t) : Formula.t =
-  let is_relevant_var (var : Formula.var) : bool =
+let remove_irrelevant_atoms (formula : Formula.t) : Formula.t =
+  let is_relevant_var (bound : int) (var : Formula.var) : bool =
     (not @@ is_fresh_var var)
-    || Formula.count_relevant_occurences var formula > 0
+    || Formula.count_relevant_occurences var formula > bound
   in
   List.filter
     (function
       | Formula.Distinct (lhs, rhs) ->
-          is_relevant_var lhs && is_relevant_var rhs
-      | Formula.Freed var -> is_relevant_var var
+          is_relevant_var 0 lhs && is_relevant_var 0 rhs
+      | Formula.Freed var -> is_relevant_var 0 var
+      | Formula.IntEq (var, _) | Formula.Ref (var, _) -> is_relevant_var 1 var
       | _ -> true)
     formula
-
-let remove_unused_int_vars : Formula.t -> Formula.t =
-  List.filter (function
-    | Formula.IntEq (var, _) -> not @@ is_fresh_var var
-    | _ -> true)
 
 (** removes all spatial atoms where the source variable doesn't appear anywhere
     else in the formula *)
@@ -146,10 +142,10 @@ module Tests = struct
   open Formula
 
   let%test "remove_irrelevant_vars" =
-    let f = [ Distinct (nil, x') ] |> remove_irrelevant_vars in
+    let f = [ Distinct (nil, x') ] |> remove_irrelevant_atoms in
     assert_eq f []
 
   let%test "remove_irrelevant_vars_2" =
-    let f = [ Freed x'; Distinct (nil, x') ] |> remove_irrelevant_vars in
+    let f = [ Freed x'; Distinct (nil, x') ] |> remove_irrelevant_atoms in
     assert_eq f []
 end

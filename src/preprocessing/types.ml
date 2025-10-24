@@ -21,8 +21,7 @@ let rec is_relevant_type (typ : typ) : bool =
   | TPtr inner -> is_relevant_type inner
   | _ -> false
 
-let is_relevant_var (var : varinfo) =
-  is_relevant_type var.vtype || var.vname = Constants.null_var_name
+let is_relevant_var (var : varinfo) = is_relevant_type var.vtype
 
 let get_struct_pointer_fields (structure : compinfo) : fieldinfo list =
   structure.cfields |> Option.get
@@ -123,7 +122,6 @@ let get_struct_def (sort : Sort.t) : MemoryModel.StructDef.t =
 (** Converts the type of a variable into its sort, and creates an SL variable *)
 let varinfo_to_var (varinfo : Cil_types.varinfo) : SL.Variable.t =
   match varinfo.vname with
-  | name when name = null_var_name -> SL.Variable.nil
   | name when name = const_var_name -> fail "_const in varinfo_to_var"
   | name when name = nondet_var_name -> fail "_nondet in varinfo_to_var"
   | name when Ast_types.is_integral varinfo.vtype ->

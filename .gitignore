@@ -4,7 +4,7 @@ astral_debug/
 .ivette
 results/
 bench/build/
-bench/ktsn.egg-info
+bench/seal.egg-info
 bp/main.pdf
 bp/template.pdf
 excel_poster/main.pdf

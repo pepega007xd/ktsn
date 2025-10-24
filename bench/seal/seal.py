@@ -1,39 +1,29 @@
-import benchexec
-import benchexec.result as result
+from benchexec import result
+from benchexec.tools.template import BaseTool2
+from benchexec.tools.sv_benchmarks_util import get_data_model_from_task, ILP32, LP64
 
 
-class Tool(benchexec.tools.template.BaseTool2):
-    def executable(self, tool_locator):
-        return tool_locator.find_executable("sh")
-
-    def version(self, executable):
-        return "0.1"
-
+class Tool(BaseTool2):
     def name(self):
         return "SEAL"
 
     def project_url(self):
         return "https://github.com/pepega007xd/seal"
 
-    def get_direct_args(self, input_file):
-        return f"frama-c -seal -seal-svcomp-mode \
-        -seal-no-catch-exceptions {input_file}"
+    def version(self, executable):
+        return self._version_from_tool(executable)
 
-    def get_args(self, input_file, ulevel):
-        return f"frama-c -scf -ulevel={ulevel} {input_file} -then-replace \
-        -seal -seal-svcomp-mode -seal-no-catch-exceptions"
+    def executable(self, tool_locator):
+        return tool_locator.find_executable("frama-c")
 
     def cmdline(self, executable, options, task, rlimits):
-        input_file = task.input_files[0]
+        machdep = get_data_model_from_task(
+            task, {ILP32: "x86_32", LP64: "x86_64"})
+        machdep_opt = ["-machdep", machdep] if machdep is not None else []
 
-        if "direct" in options:
-            return self.get_direct_args(input_file).split()
+        options += ["-seal", "-seal-svcomp-mode", "-seal-no-catch-exceptions"]
 
-        args_ulevel_3 = self.get_args(input_file, 3)
-        args_ulevel_2 = self.get_args(input_file, 2)
-        args_ulevel_0 = self.get_args(input_file, 0)
-
-        return [executable, "-c", f"timeout {rlimits.cputime // 3} {args_ulevel_3} || timeout {rlimits.cputime // 3} {args_ulevel_2} || {args_ulevel_0}"]
+        return [executable] + machdep_opt + options + [task.single_input_file]
 
     def determine_result(self, run):
         if run.exit_code.value != 0:

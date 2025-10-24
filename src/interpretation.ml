@@ -103,6 +103,18 @@ let set_value (lhs : lval) (rhs : Formula.var) (formula : Formula.t) :
     Formula.t list =
   let eval = eval formula in
 
+  let eval_and_materialize (exp : exp)
+      (fn : Formula.t * Formula.var -> Formula.t) : Formula.t list =
+    let inputs = eval exp in
+    let materialized =
+      List.concat_map
+        (fun (formula, var) ->
+          Formula.materialize var formula |> List.map (fun f -> (f, var)))
+        inputs
+    in
+    List.map fn materialized
+  in
+
   match lhs with
   (* *expr = expr; *)
   | Mem lhs, NoOffset ->
@@ -111,15 +123,13 @@ let set_value (lhs : lval) (rhs : Formula.var) (formula : Formula.t) :
         (eval lhs)
   (* expr->field = expr; *)
   | Mem lhs, Field (lhs_field, NoOffset) ->
-      List.map
-        (fun (formula, lhs) ->
+      eval_and_materialize lhs (fun (formula, lhs) ->
           if Types.is_relevant_type lhs_field.ftype then
             Transfer.assign_lhs_field lhs
               (Types.get_field_type lhs_field)
               rhs formula
           (* assignment into non-pointer field *)
             else formula)
-        (eval lhs)
   (* var = expr; *)
   | Var lhs, NoOffset ->
       let lhs = var lhs in

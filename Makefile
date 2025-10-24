@@ -34,10 +34,6 @@ FILE := $(word 2, $(MAKECMDGOALS))
 ARGS := $(wordlist 3, $(words $(MAKECMDGOALS)), $(MAKECMDGOALS))
 
 run: build
-	ivette -scf -ulevel=3 $(FILE) -then-replace \
-	-seal -seal-msg-key '*' -seal-svcomp-mode $(ARGS)
-
-run-direct: build
 	ivette -seal -seal-msg-key '*' -seal-svcomp-mode $(ARGS) $(FILE)
 
 build:

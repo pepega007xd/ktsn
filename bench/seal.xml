@@ -7,7 +7,6 @@
   memlimit="1500 MB"
 >
   <rundefinition name="Custom Benchmarks">
-    <option>direct</option>
     <tasks>
       <include>../test_programs/*.yml</include>
       <propertyfile>../test_programs/valid-memsafety.prp</propertyfile>

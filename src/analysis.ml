@@ -199,12 +199,6 @@ let doEdge (prev_stmt : stmt) (next_stmt : stmt) (state : t) : t =
     |> List.map Types.varinfo_to_var
   in
 
-  let end_of_scope_stack_vars =
-    List.filter
-      (fun var -> List.mem var !Preprocessing.stack_allocated_vars)
-      end_of_scope_locals
-  in
-
   let do_abstraction (formula : Formula.t) : Formula.t =
     match next_stmt.skind with
     | _ when Config.Edge_abstraction.get () ->
@@ -223,13 +217,11 @@ let doEdge (prev_stmt : stmt) (next_stmt : stmt) (state : t) : t =
   let open Simplification in
   let modified =
     state
-    |> List.map (remove_ptos_from_vars end_of_scope_stack_vars)
     |> List.map (convert_vars_to_fresh end_of_scope_locals)
-    |> List.map remove_unused_int_vars
     |> List.map remove_leaks
     |> List.map reduce_equiv_classes
     |> List.map do_abstraction
-    |> List.map remove_irrelevant_vars
+    |> List.map remove_irrelevant_atoms
     |> List.map remove_empty_lists
     |> Formula.canonicalize_state ~rename_fresh:false
     |> Common.list_map_pairs generalize_similar_formulas

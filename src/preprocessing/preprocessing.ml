@@ -33,15 +33,20 @@ let remove_not_operator =
 
     method! vexpr (exp : exp) =
       match exp.enode with
-      | UnOp (LNot, exp, _) ->
+      | UnOp (LNot, inner, _) ->
           let new_enode =
-            match exp.enode with
+            match inner.enode with
             | UnOp (LNot, { enode; _ }, _) -> enode
             | BinOp (Eq, lhs, rhs, typ) -> BinOp (Ne, lhs, rhs, typ)
             | BinOp (Ne, lhs, rhs, typ) -> BinOp (Eq, lhs, rhs, typ)
-            | other -> other
+            | Lval lval ->
+                let nullptr =
+                  Cil.mkCast ~newt:(typeOfLval lval) @@ Cil.zero ~loc:exp.eloc
+                in
+                BinOp (Eq, inner, nullptr, Cil_const.boolType)
+            | _ -> exp.enode
           in
-          let exp = new_exp ~loc:exp.eloc new_enode in
+          let exp = new_exp ~loc:inner.eloc new_enode in
           ChangeDoChildrenPost (exp, Fun.id)
       | _ -> DoChildren
   end
@@ -92,21 +97,6 @@ let remove_const_conditions =
       | _ -> DoChildren
   end
 
-let stack_allocated_vars : SL.Variable.t list ref = ref []
-
-let collect_stack_allocated_vars =
-  object
-    inherit Visitor.frama_c_inplace
-
-    method! vinst (instr : instr) =
-      match instr with
-      | Set ((Var lhs, NoOffset), { enode = AddrOf (Var _, NoOffset); _ }, _) ->
-          stack_allocated_vars :=
-            Types.varinfo_to_var lhs :: !stack_allocated_vars;
-          SkipChildren
-      | _ -> SkipChildren
-  end
-
 (** This function runs all preprocessing passes in order *)
 let preprocess () =
   let file = Ast.get () in
@@ -125,7 +115,6 @@ let preprocess () =
   Visitor.visitFramacFileFunctions remove_not_operator file;
   Visitor.visitFramacFileFunctions remove_noop_assignments file;
   Types.process_types file;
-  Visitor.visitFramacFileFunctions collect_stack_allocated_vars file;
 
   (* this must run after adding statements *)
   Ast.mark_as_changed ();

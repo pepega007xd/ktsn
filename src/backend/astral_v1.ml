@@ -84,5 +84,9 @@ let convert (f : Formula.t) : SL.t =
         SL.mk_eq2 (v var)
           (SL.Term.mk_smt
              (SMT.of_const (Constant.mk_bitvector_of_int value 32)))
+    (* TODO: encode as pointsto or exclude altogether? *)
+    | Ref (src, target) ->
+        let struct_def = Types.get_struct_def @@ SL.Variable.get_sort src in
+        SL.mk_pto_struct (v src) struct_def [ v target ]
   in
   SL.mk_star (List.map map_atom f)

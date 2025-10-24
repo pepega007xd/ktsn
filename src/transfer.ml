@@ -8,41 +8,16 @@ let assign (lhs : Formula.var) (rhs : Formula.var) (formula : Formula.t) :
     Formula.t =
   formula |> Formula.substitute_by_fresh lhs |> Formula.add_eq lhs rhs
 
-(** transfer function for [var = var->field;] *)
-let assign_rhs_field (lhs : Formula.var) (rhs : Formula.var)
-    (rhs_field : Types.field_type) (formula : Formula.t) : Formula.t =
-  (* TODO: remove this func and other unused cases *)
-  let rhs_target =
-    Formula.get_spatial_target_opt rhs rhs_field formula |> function
-    | Some rhs -> rhs
-    | None -> Formula.report_bug (Invalid_deref (rhs, formula))
-  in
-  if lhs = rhs_target then formula else assign lhs rhs_target formula
-
 (** transfer function for [var->field = var;] *)
 let assign_lhs_field (lhs : Formula.var) (lhs_field : Types.field_type)
     (rhs : Formula.var) (formula : Formula.t) : Formula.t =
   Formula.change_pto_target lhs lhs_field rhs formula
 
-let stack_ptr_field = Types.Other Constants.ptr_field_name
-
 (** transfer function for [*var = var;], lhs is assumed to be a stack pointer *)
 let assign_lhs_deref (lhs : Formula.var) (rhs : Formula.var)
     (formula : Formula.t) : Formula.t =
-  let lhs_target = Formula.get_spatial_target lhs stack_ptr_field formula in
-  assign lhs_target rhs formula
-  |> Formula.change_pto_target lhs stack_ptr_field lhs_target
-
-(** transfer function for [var = &var;], we need to check if there is already a
-    _target ptr and change it, otherwise add it *)
-let assign_ref (lhs : Formula.var) (rhs : Formula.var) (formula : Formula.t) :
-    Formula.t =
-  match Formula.get_spatial_target_opt lhs stack_ptr_field formula with
-  | Some _ -> Formula.change_pto_target lhs stack_ptr_field rhs formula
-  | None ->
-      Formula.add_atom
-        (Formula.PointsTo (lhs, Generic [ (Constants.ptr_field_name, rhs) ]))
-        formula
+  let lhs_target = Formula.get_ref lhs formula in
+  assign lhs_target rhs formula |> Formula.update_ref lhs lhs_target
 
 (** transfer function for function calls *)
 let call (lhs_sort : SL.Sort.t) (func : Cil_types.varinfo)

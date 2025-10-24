@@ -62,6 +62,13 @@ let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
       let value = Cil.constFoldToInt exp |> Option.get |> Z.to_int in
       [ (Formula.update_int_eq fresh_var value formula, fresh_var) ]
   | Const _ -> [ (formula, Formula.unknown) ]
+  | AddrOf (Var target, NoOffset) ->
+      let target = var target in
+      let src =
+        Cil.typeOf exp |> Types.get_type_info |> fst
+        |> SL.Variable.mk_fresh "ref"
+      in
+      [ (Formula.update_ref src target formula, src) ]
   | CastE (typ, exp)
     when Ast_types.is_ptr typ && Cil.typeOf exp |> Ast_types.is_ptr ->
       eval_orig exp
@@ -74,12 +81,9 @@ let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
         (eval_orig lhs)
   | Lval (Var v, NoOffset) -> [ (formula, var v) ]
   | Lval (Mem inner, NoOffset) ->
-      eval_and_materialize inner (fun (formula, var) ->
-          let var =
-            (Formula.get_spatial_target var (Other Constants.ptr_field_name))
-              formula
-          in
-          (formula, var))
+      List.map
+        (fun (formula, src) -> (formula, Formula.get_ref src formula))
+        (eval_orig inner)
   | Lval (Mem inner, Field (field, NoOffset)) ->
       eval_and_materialize inner (fun (formula, var) ->
           if Types.is_relevant_type field.ftype then
@@ -142,9 +146,6 @@ let eval_arg (arg : exp) (input : function_input) : function_input list =
 let interpret_instr (instr : instr) (formula : Formula.t) : Formula.t list =
   let eval = eval formula in
   match instr with
-  (* var = &var; // limited form, only used for stack pointers *)
-  | Set ((Var lhs, NoOffset), { enode = AddrOf (Var rhs, NoOffset); _ }, _) ->
-      [ Transfer.assign_ref (var lhs) (var rhs) formula ]
   (* lval = expr; *)
   | Set (lhs, rhs, _) ->
       List.concat_map

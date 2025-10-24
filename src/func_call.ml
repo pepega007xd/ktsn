@@ -69,7 +69,6 @@ let get_result_state (func : Kernel_function.t) (formula : Formula.t) :
 let func_call (args : Formula.var list) (func : varinfo) (formula : Formula.t)
     (lhs_sort : Sort.t) : Formula.t list * Formula.var list =
   let func = Globals.Functions.get func in
-  let fundec = Kernel_function.get_definition func in
   let return_stmt = Kernel_function.find_return func in
 
   let params =
@@ -77,13 +76,6 @@ let func_call (args : Formula.var list) (func : varinfo) (formula : Formula.t)
   in
   let locals =
     params @ (Kernel_function.get_locals func |> List.map Types.varinfo_to_var)
-  in
-
-  let end_of_scope_stack_vars =
-    fundec.sbody.blocals
-    |> List.filter Types.is_relevant_var
-    |> List.map Types.varinfo_to_var
-    |> List.filter (fun var -> List.mem var !Preprocessing.stack_allocated_vars)
   in
 
   let reachable, unreachable = Formula.split_by_reachability args formula in
@@ -106,7 +98,6 @@ let func_call (args : Formula.var list) (func : varinfo) (formula : Formula.t)
     in
     ( result
       |> Formula.substitute ~var:return_var ~by:lhs
-      |> Simplification.remove_ptos_from_vars end_of_scope_stack_vars
       |> Simplification.convert_vars_to_fresh locals,
       lhs )
   in

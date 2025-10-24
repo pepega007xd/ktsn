@@ -122,8 +122,6 @@ let get_struct_def (sort : Sort.t) : MemoryModel.StructDef.t =
 (** Converts the type of a variable into its sort, and creates an SL variable *)
 let varinfo_to_var (varinfo : Cil_types.varinfo) : SL.Variable.t =
   match varinfo.vname with
-  | name when name = const_var_name -> fail "_const in varinfo_to_var"
-  | name when name = nondet_var_name -> fail "_nondet in varinfo_to_var"
   | name when Ast_types.is_integral varinfo.vtype ->
       SL.Variable.mk name (Sort.mk_bitvector 32)
   | _ when not @@ is_relevant_var varinfo ->

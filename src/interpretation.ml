@@ -55,13 +55,17 @@ let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
   in
 
   match exp.enode with
+  (* NULL *)
   | _ when Cil.typeOf exp |> Ast_types.is_ptr && Cil.is_nullptr exp ->
       [ (formula, Formula.nil) ]
+  (* integer constant *)
   | _ when Cil.constFoldToInt exp |> Option.is_some ->
       let fresh_var = SL.Variable.mk_fresh "int" Formula.int_sort in
       let value = Cil.constFoldToInt exp |> Option.get |> Z.to_int in
       [ (Formula.update_int_eq fresh_var value formula, fresh_var) ]
+  (* other constant - string literal, etc *)
   | Const _ -> [ (formula, Formula.unknown) ]
+  (* &var *)
   | AddrOf (Var target, NoOffset) ->
       let target = var target in
       let src =
@@ -69,9 +73,11 @@ let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
         |> SL.Variable.mk_fresh "ref"
       in
       [ (Formula.update_ref src target formula, src) ]
+  (* type cast of pointer to pointer *)
   | CastE (typ, exp)
     when Ast_types.is_ptr typ && Cil.typeOf exp |> Ast_types.is_ptr ->
       eval_orig exp
+  (* binary operator *)
   | BinOp (op, lhs, rhs, _) ->
       List.concat_map
         (fun (formula, lhs) ->
@@ -79,11 +85,21 @@ let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
             (fun (formula, rhs) -> eval_binop op lhs rhs formula)
             (eval formula rhs))
         (eval_orig lhs)
+  (* variable *)
   | Lval (Var v, NoOffset) -> [ (formula, var v) ]
+  (* *exp *)
   | Lval (Mem inner, NoOffset) ->
       List.map
-        (fun (formula, src) -> (formula, Formula.get_ref src formula))
+        (fun (formula, src) ->
+          Formula.get_ref_opt src formula |> function
+          (* stack pointer *)
+          | Some target -> (formula, target)
+          (* regular pointer to integer *)
+          | None ->
+              Formula.assert_allocated src formula;
+              (formula, Formula.unknown))
         (eval_orig inner)
+  (* exp->field *)
   | Lval (Mem inner, Field (field, NoOffset)) ->
       eval_and_materialize inner (fun (formula, var) ->
           if Types.is_relevant_type field.ftype then
@@ -133,10 +149,12 @@ let set_value (lhs : lval) (rhs : Formula.var) (formula : Formula.t) :
   (* var = expr; *)
   | Var lhs, NoOffset ->
       let lhs = var lhs in
-      let int_value = Formula.get_int_val_opt lhs formula in
+      let int_value = Formula.get_int_val_opt rhs formula in
       let result =
         match int_value with
-        | Some value -> Formula.update_int_eq lhs value formula
+        | Some value ->
+            Formula.substitute_by_fresh lhs formula
+            |> Formula.update_int_eq lhs value
         | _ when rhs = Formula.unknown -> formula
         | _ when lhs = rhs -> formula
         | _ -> Transfer.assign lhs rhs formula

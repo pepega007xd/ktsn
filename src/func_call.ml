@@ -31,7 +31,7 @@ let previous_results : (Cil_types.stmt, Formula.state) Hashtbl.t list ref =
   ref []
 
 let get_anchor (var : Formula.var) : Formula.var =
-  let name = "A_" ^ SL.Variable.get_name var in
+  let name = "A$" ^ SL.Variable.get_name var in
   SL.Variable.mk name (SL.Variable.get_sort var)
 
 (** Creates a new context, runs the analysis recursively of the called function,

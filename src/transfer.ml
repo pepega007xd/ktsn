@@ -13,11 +13,17 @@ let assign_lhs_field (lhs : Formula.var) (lhs_field : Types.field_type)
     (rhs : Formula.var) (formula : Formula.t) : Formula.t =
   Formula.change_pto_target lhs lhs_field rhs formula
 
-(** transfer function for [*var = var;], lhs is assumed to be a stack pointer *)
+(** transfer function for [*var = var;] *)
 let assign_lhs_deref (lhs : Formula.var) (rhs : Formula.var)
     (formula : Formula.t) : Formula.t =
-  let lhs_target = Formula.get_ref lhs formula in
-  assign lhs_target rhs formula |> Formula.update_ref lhs lhs_target
+  Formula.get_ref_opt lhs formula |> function
+  | Some lhs_target ->
+      (* stack pointer *)
+      assign lhs_target rhs formula |> Formula.update_ref lhs lhs_target
+  | None ->
+      (* regular pointer to integer *)
+      Formula.assert_allocated lhs formula;
+      formula
 
 (** transfer function for function calls *)
 let call (lhs_sort : SL.Sort.t) (func : Cil_types.varinfo)

@@ -15,10 +15,9 @@ type field_type = Next | Prev | Top | Other of string | Data
 
 let pp_typ_node fmt tnode = Cil_printer.pp_typ fmt { tnode; tattr = [] }
 
-let rec is_relevant_type (typ : typ) : bool =
+let is_relevant_type (typ : typ) : bool =
   match Ast_types.unroll_deep_node typ with
-  | TComp _ -> true
-  | TPtr inner -> is_relevant_type inner
+  | TComp _ | TPtr _ -> true
   | _ -> false
 
 let is_relevant_var (var : varinfo) = is_relevant_type var.vtype
@@ -79,40 +78,44 @@ let rec get_type_info (typ : typ) : Sort.t * MemoryModel.StructDef.t =
   let typ = Ast_types.unroll_deep_node typ in
   Hashtbl.find_opt type_info typ |> function
   | Some result -> result
-  | None -> (
+  | None ->
       let dummy_struct_def = MemoryModel.StructDef.mk "dummy_struct_def" [] in
-      match typ with
-      | TPtr { tnode = TComp structure; _ } -> (
-          match get_struct_type structure with
-          | Sll -> (SL_builtins.loc_ls, dummy_struct_def)
-          | Dll -> (SL_builtins.loc_dls, dummy_struct_def)
-          | Nl -> (SL_builtins.loc_nls, dummy_struct_def)
-          | Struct ->
-              let name = structure.cname in
-              let sort = Sort.mk_loc name in
-              let fields =
-                structure |> get_struct_pointer_fields
-                |> List.map (fun field ->
-                       let sort = field.ftype |> get_type_info |> fst in
-                       MemoryModel0.Field.mk field.fname sort)
-              in
-              let struct_def = MemoryModel.StructDef.mk name fields in
-              let result = (sort, struct_def) in
-              Hashtbl.add type_info typ result;
-              result)
-      | TPtr inner ->
-          let name = Common.get_unique_name "ptr2ptr" in
-          let sort = Sort.mk_loc name in
-          let inner_sort = get_type_info inner |> fst in
-          let field =
-            MemoryModel0.Field.mk Constants.ptr_field_name inner_sort
-          in
-          let struct_def = MemoryModel.StructDef.mk name [ field ] in
-          let result = (sort, struct_def) in
-          Hashtbl.add type_info typ result;
-          result
-      (*TODO: return proper sort for integers from get_type_info *)
-      | _ -> (Sort.loc_nil, dummy_struct_def))
+      let result =
+        match typ with
+        | TPtr { tnode = TComp structure; _ } -> (
+            match get_struct_type structure with
+            | Sll -> (SL_builtins.loc_ls, dummy_struct_def)
+            | Dll -> (SL_builtins.loc_dls, dummy_struct_def)
+            | Nl -> (SL_builtins.loc_nls, dummy_struct_def)
+            | Struct ->
+                let name = structure.cname in
+                let sort = Sort.mk_loc name in
+                let fields =
+                  structure |> get_struct_pointer_fields
+                  |> List.map (fun field ->
+                         let sort = field.ftype |> get_type_info |> fst in
+                         MemoryModel0.Field.mk field.fname sort)
+                in
+                let struct_def = MemoryModel.StructDef.mk name fields in
+                (sort, struct_def))
+        | TPtr { tnode = TInt _; _ } ->
+            let name = "intptr" in
+            let sort = Sort.mk_loc name in
+            let struct_def = MemoryModel.StructDef.mk name [] in
+            (sort, struct_def)
+        | TPtr inner ->
+            let name = Common.get_unique_name "ptr2ptr" in
+            let sort = Sort.mk_loc name in
+            let inner_sort = get_type_info inner |> fst in
+            let field =
+              MemoryModel0.Field.mk Constants.ptr_field_name inner_sort
+            in
+            let struct_def = MemoryModel.StructDef.mk name [ field ] in
+            (sort, struct_def)
+        | _ -> (Sort.loc_nil, dummy_struct_def)
+      in
+      if snd result <> dummy_struct_def then Hashtbl.add type_info typ result;
+      result
 
 let get_struct_def (sort : Sort.t) : MemoryModel.StructDef.t =
   Hashtbl.to_seq_values type_info

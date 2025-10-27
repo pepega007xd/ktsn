@@ -556,18 +556,19 @@ let split_by_reachability (vars : var list) (f : t) : t * t =
     |> map_equiv_classes (List.filter (fun var -> List.mem var reachable_vars))
   in
 
-  let reachable_distincts =
+  let other_reachable_atoms =
     List.filter
       (function
         | Distinct (lhs, rhs) ->
             List.mem lhs reachable_vars && List.mem rhs reachable_vars
-        | Freed var -> List.mem var reachable_vars
+        | Freed var | IntEq (var, _) | Ref (var, _) ->
+            List.mem var reachable_vars
         | _ -> false)
       rest
   in
 
   let reachable =
-    reachable_equiv_classes @ reachable_spatials @ reachable_distincts
+    reachable_equiv_classes @ reachable_spatials @ other_reachable_atoms
   in
   let unreachable =
     List.filter (fun atom -> not @@ List.mem atom reachable) rest

@@ -152,7 +152,9 @@ let set_value (lhs : lval) (rhs : Formula.var) (formula : Formula.t) :
       let int_value = Formula.get_int_val_opt rhs formula in
       let result =
         match int_value with
-        | Some value -> Formula.update_int_eq lhs value formula
+        | Some value ->
+            Formula.substitute_by_fresh lhs formula
+            |> Formula.update_int_eq lhs value
         | _ when rhs = Formula.unknown -> formula
         | _ when lhs = rhs -> formula
         | _ -> Transfer.assign lhs rhs formula

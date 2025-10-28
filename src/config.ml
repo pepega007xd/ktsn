@@ -90,7 +90,10 @@ end)
 
 module Max_loop_cycles = Self.Int (struct
   let option_name = "-seal-max-loop-cycles"
-  let help = "If set, the analysis will traverse loops only N times"
+
+  let help =
+    "If set, the analysis will traverse loops only N times (default: disabled)"
+
   let arg_name = "N"
   let default = -1
 end)
@@ -100,6 +103,16 @@ module Catch_exceptions = Self.True (struct
 
   let help =
     "Catch and print exceptions in main function (disable for benchmarks)"
+end)
+
+module Max_int_value = Self.Int (struct
+  let option_name = "-seal-max-int"
+  let default = 5
+  let arg_name = "N"
+
+  let help =
+    Format.sprintf "Represent only integers within range [-N, N] (default: %i)"
+      default
 end)
 
 module Print_version = Self.False (struct

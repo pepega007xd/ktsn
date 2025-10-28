@@ -324,6 +324,7 @@ let get_spatial_target_opt (src : var) (field : Types.field_type) (f : t) :
   get_spatial_atom_from_opt src f |> Option.map (get_target_of_atom field)
 
 let remove_spatial_from (src : var) (f : t) : t =
+  let f = make_var_explicit_src src f in
   get_spatial_atom_from_opt src f |> function
   | Some original_atom -> remove_atom original_atom f
   | None -> f
@@ -450,12 +451,18 @@ let get_int_val_opt (var : var) : t -> int option =
 
 let get_int_val (var : var) (f : t) : int = get_int_val_opt var f |> Option.get
 
+let remove_int_val (var : var) : t -> t =
+  List.filter (function IntEq (v, _) -> var <> v | _ -> true)
+
 let update_int_eq (var : var) (value : int) (f : t) : t =
-  if get_int_val_opt var f |> Option.is_some then
-    List.map
-      (function IntEq (v, _) when var = v -> IntEq (v, value) | a -> a)
-      f
-  else f |> add_atom (IntEq (var, value))
+  match get_int_val_opt var f with
+  | _ when abs value > abs @@ Config.Max_int_value.get () ->
+      remove_int_val var f
+  | Some _ ->
+      List.map
+        (function IntEq (v, _) when var = v -> IntEq (v, value) | a -> a)
+        f
+  | None -> add_atom (IntEq (var, value)) f
 
 (** Materialization *)
 
@@ -562,9 +569,9 @@ let split_by_reachability (vars : var list) (f : t) : t * t =
   let reachable_vars = (nil :: vars) @ get_vars reachable_spatials in
 
   let reachable_equiv_classes =
-    rest
-    |> List.filter (function Eq _ -> true | _ -> false)
-    |> map_equiv_classes (List.filter (fun var -> List.mem var reachable_vars))
+    rest |> get_equiv_classes
+    |> List.filter (List.exists (fun var -> List.mem var reachable_vars))
+    |> List.map (fun cls -> Eq cls)
   in
 
   let other_reachable_atoms =

@@ -106,10 +106,10 @@ let func_call (args : Formula.var list) (func : varinfo) (formula : Formula.t)
     List.fold_left2
       (fun formula param arg ->
         formula
-        (* add anchor variables *)
-        |> Formula.add_eq param (get_anchor param)
         (* substitute argument names with parameter names *)
-        |> Formula.substitute ~var:arg ~by:param)
+        |> Formula.substitute ~var:arg ~by:param
+        (* add anchor variables *)
+        |> Formula.add_eq param (get_anchor param))
       reachable params args
   in
 

@@ -450,12 +450,18 @@ let get_int_val_opt (var : var) : t -> int option =
 
 let get_int_val (var : var) (f : t) : int = get_int_val_opt var f |> Option.get
 
+let remove_int_val (var : var) : t -> t =
+  List.filter (function IntEq (v, _) -> var <> v | _ -> true)
+
 let update_int_eq (var : var) (value : int) (f : t) : t =
-  if get_int_val_opt var f |> Option.is_some then
-    List.map
-      (function IntEq (v, _) when var = v -> IntEq (v, value) | a -> a)
-      f
-  else f |> add_atom (IntEq (var, value))
+  match get_int_val_opt var f with
+  | _ when abs value > abs @@ Config.Max_int_value.get () ->
+      remove_int_val var f
+  | Some _ ->
+      List.map
+        (function IntEq (v, _) when var = v -> IntEq (v, value) | a -> a)
+        f
+  | None -> add_atom (IntEq (var, value)) f
 
 (** Materialization *)
 

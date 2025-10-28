@@ -392,21 +392,28 @@ let add_eq (lhs : var) (rhs : var) (f : t) : t =
 let add_distinct (lhs : var) (rhs : var) (f : t) : t =
   let try_increase_bound lhs rhs =
     let f = make_var_explicit_src lhs f in
+    let eq a b = is_eq a b f in
     match get_spatial_atom_from_opt lhs f with
-    | Some (LS ls) when ls.min_len = 0 && is_eq ls.next rhs f ->
+    | Some (LS ls) when ls.min_len = 0 && eq ls.next rhs ->
         Some (f |> remove_atom (LS ls) |> add_atom (LS { ls with min_len = 1 }))
     (* first != last means length at least 2 *)
-    | Some (DLS dls) when dls.min_len < 2 && is_eq dls.last rhs f ->
+    | Some (DLS dls) when dls.min_len < 2 && eq dls.first lhs && eq dls.last rhs
+      ->
         Some
           (f |> remove_atom (DLS dls) |> add_atom (DLS { dls with min_len = 2 }))
-    (* first != next or first != prev means length at least 1 *)
-    | Some (DLS dls)
-      when dls.min_len = 0 && (is_eq dls.next rhs f || is_eq dls.prev rhs f) ->
+    (* first != next means length at least 1 *)
+    | Some (DLS dls) when dls.min_len = 0 && eq dls.first lhs && eq dls.next rhs
+      ->
         Some
           (f |> remove_atom (DLS dls) |> add_atom (DLS { dls with min_len = 1 }))
-    | Some (NLS nls) when nls.min_len = 0 && is_eq nls.top rhs f ->
+    (* last != prev means length at least 1 *)
+    | Some (DLS dls) when dls.min_len = 0 && eq dls.last lhs && eq dls.prev rhs
+      ->
         Some
-          (f |> remove_atom (NLS nls) |> add_atom (NLS { nls with min_len = 2 }))
+          (f |> remove_atom (DLS dls) |> add_atom (DLS { dls with min_len = 1 }))
+    | Some (NLS nls) when nls.min_len = 0 && eq nls.top rhs ->
+        Some
+          (f |> remove_atom (NLS nls) |> add_atom (NLS { nls with min_len = 1 }))
     | _ -> None
   in
 
@@ -498,14 +505,14 @@ let rec materialize (var : var) (f : t) : t list =
       |> add_atom (PointsTo (var, DLS_t (fresh_var, dls.prev)))
       |> add_atom @@ mk_dls fresh_var dls.last var dls.next 0)
       (* length 0 cases *)
-      :: (f |> add_eq dls.first dls.last |> add_eq dls.first dls.next
-        |> add_eq dls.last dls.prev |> materialize var)
+      :: (f |> add_eq dls.first dls.next |> add_eq dls.last dls.prev
+        |> materialize var)
   | DLS dls when var = dls.last ->
       (f
       |> add_atom (PointsTo (var, DLS_t (dls.next, fresh_var)))
       |> add_atom @@ mk_dls dls.first fresh_var dls.prev var 0)
-      :: (f |> add_eq dls.first dls.last |> add_eq dls.first dls.next
-        |> add_eq dls.last dls.prev |> materialize var)
+      :: (f |> add_eq dls.first dls.next |> add_eq dls.last dls.prev
+        |> materialize var)
   (* case where NLS has minimum length of at least one *)
   | NLS nls when nls.min_len > 0 ->
       (* materalization of NLS produces a LS_0+ from fresh_var to `nls.next` *)

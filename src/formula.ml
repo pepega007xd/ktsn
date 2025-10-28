@@ -259,14 +259,18 @@ let is_spatial_source_first (src : var) : atom -> bool = function
 
 let make_var_explicit_src (var : var) (f : t) : t =
   find_equiv_class var f |> function
-  | Some equiv_class ->
+  | Some equiv_class -> (
       let current_src =
         List.find_opt
           (fun src -> List.exists (is_spatial_source src) f)
           equiv_class
       in
-      Option.map (fun current_src -> swap_vars current_src var f) current_src
-      |> Option.value ~default:f
+      match current_src with
+      | Some current_src ->
+          let spatial_atoms, rest = List.partition is_spatial_atom f in
+          (* swap vars only in spatial atoms to not break Ref atoms *)
+          swap_vars current_src var spatial_atoms @ rest
+      | None -> f)
   | None -> f
 
 let get_spatial_atom_from_opt (src : var) (f : t) : atom option =

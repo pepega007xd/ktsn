@@ -324,6 +324,7 @@ let get_spatial_target_opt (src : var) (field : Types.field_type) (f : t) :
   get_spatial_atom_from_opt src f |> Option.map (get_target_of_atom field)
 
 let remove_spatial_from (src : var) (f : t) : t =
+  let f = make_var_explicit_src src f in
   get_spatial_atom_from_opt src f |> function
   | Some original_atom -> remove_atom original_atom f
   | None -> f
@@ -568,9 +569,9 @@ let split_by_reachability (vars : var list) (f : t) : t * t =
   let reachable_vars = (nil :: vars) @ get_vars reachable_spatials in
 
   let reachable_equiv_classes =
-    rest
-    |> List.filter (function Eq _ -> true | _ -> false)
-    |> map_equiv_classes (List.filter (fun var -> List.mem var reachable_vars))
+    rest |> get_equiv_classes
+    |> List.filter (List.exists (fun var -> List.mem var reachable_vars))
+    |> List.map (fun cls -> Eq cls)
   in
 
   let other_reachable_atoms =

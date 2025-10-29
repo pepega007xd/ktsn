@@ -106,7 +106,7 @@ module Catch_exceptions = Self.True (struct
 end)
 
 module Max_int_value = Self.Int (struct
-  let option_name = "-max-int-value"
+  let option_name = "-seal-max-int"
   let default = 5
   let arg_name = "N"
 

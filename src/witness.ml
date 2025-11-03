@@ -14,6 +14,13 @@ let write_witness (bug_type : Formula.bug_type) (pos : Filepath.position) =
     | other -> Common.fail "unknown machdep: %s" other
   in
 
+  let architecture =
+    match (Machine.get_machdep ()).machdep_name with
+    | "machdep_x86_32" -> "32bit"
+    | "machdep_x86_64" -> "64bit"
+    | other -> Common.fail "unknown machdep: %s" other
+  in
+
   let filename, filepath =
     File.get_all () |> function
     | (File.NeedCPP (path, _, _, _) | File.NoCPP path | External (path, _)) :: _
@@ -64,4 +71,51 @@ let write_witness (bug_type : Formula.bug_type) (pos : Filepath.position) =
     \    uuid: %s\n"
     filename pos.pos_lnum time data_model filepath hash filepath specification
     uuid;
+  close_out oc;
+  let oc = open_out "witness.graphml" in
+  Printf.fprintf oc
+    "<?xml version='1.0' encoding='UTF-8' standalone='no'?>\n\
+     <graphml xmlns='http://graphml.graphdrawing.org/xmlns'\n\
+    \  xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'>\n\
+    \ <key attr.name='isViolationNode'\n\
+    \    attr.type='boolean' for='node' id='violation'/>\n\
+    \ <key attr.name='isEntryNode' attr.type='boolean' for='node' id='entry'>\n\
+    \    <default>false</default>\n\
+    \ </key>\n\
+    \ <key attr.name='sourcecodeLanguage'\n\
+    \    attr.type='string' for='graph' id='sourcecodelang'/>\n\
+    \ <key attr.name='programFile'\n\
+    \    attr.type='string' for='graph' id='programfile'/>\n\
+    \ <key attr.name='programHash'\n\
+    \    attr.type='string' for='graph' id='programhash'/>\n\
+    \ <key attr.name='specification'\n\
+    \    attr.type='string' for='graph' id='specification'/>\n\
+    \ <key attr.name='architecture'\n\
+    \    attr.type='string' for='graph' id='architecture'/>\n\
+    \ <key attr.name='producer'\n\
+    \    attr.type='string' for='graph' id='producer'/>\n\
+    \ <key attr.name='creationTime'\n\
+    \    attr.type='string' for='graph' id='creationtime'/>\n\
+    \ <key attr.name='witness-type'\n\
+    \    attr.type='string' for='graph' id='witness-type'/>\n\
+    \ <key attr.name='inputWitnessHash'\n\
+    \    attr.type='string' for='graph' id='inputwitnesshash'/>\n\
+    \ <graph edgedefault='directed'>\n\
+    \  <data key='witness-type'>violation_witness</data>\n\
+    \  <data key='sourcecodelang'>C</data>\n\
+    \  <data key='producer'>SEAL</data>\n\
+    \  <data key='specification'>%s</data>\n\
+    \  <data key='programfile'>%s</data>\n\
+    \  <data key='programhash'>%s</data>\n\
+    \  <data key='architecture'>%s</data>\n\
+    \  <data key='creationtime'>%s</data>\n\
+    \  <node id='entry'>\n\
+    \   <data key='entry'>true</data>\n\
+    \  </node>\n\
+    \  <node id='violation'>\n\
+    \   <data key='violation'>true</data>\n\
+    \  </node>\n\
+    \ </graph>\n\
+     </graphml>\n"
+    specification filepath hash architecture time;
   close_out oc

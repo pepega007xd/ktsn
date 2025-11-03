@@ -73,6 +73,15 @@ let rec eval (formula : Formula.t) (exp : exp) : (Formula.t * Formula.var) list
         |> SL.Variable.mk_fresh "ref"
       in
       [ (Formula.update_ref src target formula, src) ]
+  (* HACK: treat [&list->data] as [&list] for integer fields *)
+  | AddrOf ((Mem { enode = Lval (Var target, NoOffset); _ }, _) as target_lval)
+    when Cil.typeOfLval target_lval |> Ast_types.is_integral ->
+      let target = var target in
+      let src =
+        Cil.typeOf exp |> Types.get_type_info |> fst
+        |> SL.Variable.mk_fresh "HACK_int_ref"
+      in
+      [ (Formula.update_ref src target formula, src) ]
   (* type cast of pointer to pointer *)
   | CastE (typ, exp)
     when Ast_types.is_ptr typ && Cil.typeOf exp |> Ast_types.is_ptr ->

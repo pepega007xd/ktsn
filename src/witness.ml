@@ -8,17 +8,17 @@ let write_witness (bug_type : Formula.bug_type) (pos : Filepath.position) =
   in
 
   let data_model =
-    match (Machine.get_machdep ()).machdep_name with
-    | "machdep_x86_32" -> "ILP32"
-    | "machdep_x86_64" -> "LP64"
-    | other -> Common.fail "unknown machdep: %s" other
+    match Machine.sizeof_ptr () with
+    | 4 -> "ILP32"
+    | 8 -> "LP64"
+    | _ -> Common.fail "unsupported machdep for sv-witnesses: %s" (Machine.machdep_name ())
   in
 
   let architecture =
-    match (Machine.get_machdep ()).machdep_name with
-    | "machdep_x86_32" -> "32bit"
-    | "machdep_x86_64" -> "64bit"
-    | other -> Common.fail "unknown machdep: %s" other
+    match Machine.sizeof_ptr () with
+    | 4 -> "32bit"
+    | 8 -> "64bit"
+    | _ -> Common.fail "unsupported machdep for sv-witnesses: %s" (Machine.machdep_name ())
   in
 
   let filename, filepath =
@@ -115,6 +115,7 @@ let write_witness (bug_type : Formula.bug_type) (pos : Filepath.position) =
     \  <node id='violation'>\n\
     \   <data key='violation'>true</data>\n\
     \  </node>\n\
+    \  <edge source='entry' target='violation' />\n\
     \ </graph>\n\
      </graphml>\n"
     specification filepath hash architecture time;

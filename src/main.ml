@@ -60,7 +60,7 @@ let main () =
      | Formula.Bug (bug_type, pos) ->
          if Config.Svcomp_mode.get () then Witness.write_witness bug_type pos;
          (* print the type of detected bug *)
-         Self.result "%a" Formula.pp_bug_type bug_type
+         Self.result ~source:pos "%a" Formula.pp_bug_type bug_type
      | e -> if not @@ Config.Catch_exceptions.get () then raise e));
 
   (* dump analysis results *)

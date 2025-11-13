@@ -115,6 +115,7 @@ let write_witness (bug_type : Formula.bug_type) (pos : Filepath.position) =
     \  <node id='violation'>\n\
     \   <data key='violation'>true</data>\n\
     \  </node>\n\
+    \  <edge source='entry' target='violation' />\n\
     \ </graph>\n\
      </graphml>\n"
     specification filepath hash architecture time;

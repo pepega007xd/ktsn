@@ -55,4 +55,7 @@ bp-archive: clean
 
 svcomp-archive: clean
 	utils/pack.sh
-	zip -r svcomp.zip svcomp
+	# SV-COMP requires the directory to be called like the tool
+	mv svcomp seal
+	zip -r seal.zip seal
+	mv seal svcomp
